@@ -228,6 +228,54 @@ def build_rag_answer(question: str, docs) -> str:
     return chain.invoke({"question": question, "context": context})
 
 
+def retrieve_docs(vectorstore, retriever, query: str, k: int):
+    """
+    Retrieve relevant chunks for a query.
+
+    LangChain has shifted retrievers toward the Runnable interface, so the most
+    reliable call path is retriever.invoke(query). If that is not available,
+    we fall back to similarity_search().
+    """
+    try:
+        if hasattr(retriever, "invoke"):
+            docs = retriever.invoke(query)
+        else:
+            docs = vectorstore.similarity_search(query, k=k)
+    except Exception:
+        docs = vectorstore.similarity_search(query, k=k)
+
+    return docs or []
+
+
+def clean_snippet(text: str, limit: int = 220) -> str:
+    """Return a compact one-line preview of a chunk."""
+    s = (text or "").strip().replace("\n", " ")
+    if len(s) > limit:
+        return s[:limit] + "..."
+    return s
+
+
+def get_db_sources(vectorstore):
+    """
+    Return (total_chunks, {source: count}) if the backend supports it.
+    """
+    try:
+        data = vectorstore.get(include=["metadatas"])
+        metadatas = data.get("metadatas", []) or []
+        total = len(metadatas)
+
+        counts: dict[str, int] = {}
+        for md in metadatas:
+            if not md:
+                continue
+            src = md.get("source", "unknown")
+            counts[src] = counts.get(src, 0) + 1
+
+        return total, counts
+    except Exception:
+        return None, {}
+
+
 def cmd_status(_: argparse.Namespace) -> int:
     """
     Print the app configuration and verify we can initialize the vectorstore.
@@ -299,23 +347,54 @@ def cmd_add_gutenberg(args: argparse.Namespace) -> int:
     print(f"Inserted {chunks_added} chunks into Chroma")
     return 0
 
-def retrieve_docs(vectorstore, retriever, query: str, k: int):
-    """
-    Retrieve relevant chunks for a query.
 
-    LangChain has shifted retrievers toward the Runnable interface, so the most
-    reliable call path is retriever.invoke(query). If that is not available,
-    we fall back to similarity_search().
+def cmd_search(args: argparse.Namespace) -> int:
     """
-    try:
-        if hasattr(retriever, "invoke"):
-            docs = retriever.invoke(query)
-        else:
-            docs = vectorstore.similarity_search(query, k=k)
-    except Exception:
-        docs = vectorstore.similarity_search(query, k=k)
+    Search the vector database and print the closest matching chunks.
+    """
+    config = get_config()
+    require_env("GOOGLE_API_KEY")
 
-    return docs or []
+    vectorstore = build_vectorstore(config)
+    docs = vectorstore.similarity_search(args.query, k=args.k)
+
+    print("== Vector search ==")
+    print(f"Query: {args.query}")
+    print(f"Matches: {len(docs)}\n")
+
+    for i, d in enumerate(docs, start=1):
+        src = (d.metadata or {}).get("source", "unknown")
+        print(f"{i}. Source: {src}")
+        print(f"   Snippet: {clean_snippet(d.page_content)}\n")
+
+    return 0
+
+
+def cmd_sources(_: argparse.Namespace) -> int:
+    """
+    List the sources currently stored in the database.
+    """
+    config = get_config()
+    require_env("GOOGLE_API_KEY")
+
+    vectorstore = build_vectorstore(config)
+    total, counts = get_db_sources(vectorstore)
+
+    print("== DB sources ==")
+    if total is not None:
+        print(f"Total chunks: {total}")
+    else:
+        print("Total chunks: (unavailable in this backend)")
+
+    if not counts:
+        print("No source metadata found yet. Ingest a document first.")
+        return 0
+
+    for src, n in sorted(counts.items(), key=lambda x: (-x[1], x[0])):
+        print(f"- {src} ({n} chunks)")
+
+    return 0
+
 
 def cmd_ask(args: argparse.Namespace) -> int:
     """
@@ -335,6 +414,13 @@ def cmd_ask(args: argparse.Namespace) -> int:
     print("== RAG query ==")
     print(f"Question: {args.question}")
     print(f"Retrieved chunks: {len(docs)}")
+
+    if args.show_snippets and docs:
+        print("\nContext preview:")
+        for i, d in enumerate(docs, start=1):
+            src = (d.metadata or {}).get("source", "unknown")
+            print(f"{i}. {src}")
+            print(f"   {clean_snippet(d.page_content)}")
 
     answer = build_rag_answer(args.question, docs)
     print("\nAnswer:")
@@ -378,12 +464,31 @@ def build_cli() -> argparse.ArgumentParser:
     p_add.add_argument("--chunk-overlap", type=int, default=200, help="Chunk overlap in characters.")
     p_add.set_defaults(func=cmd_add_gutenberg)
 
+    p_search = subparsers.add_parser(
+        "search",
+        help="Search for the closest chunks in the vector DB.",
+    )
+    p_search.add_argument("query", help="Search query.")
+    p_search.add_argument("--k", type=int, default=4, help="Number of matches to show.")
+    p_search.set_defaults(func=cmd_search)
+
+    p_sources = subparsers.add_parser(
+        "sources",
+        help="List sources currently stored in the vector DB.",
+    )
+    p_sources.set_defaults(func=cmd_sources)
+
     p_ask = subparsers.add_parser(
         "ask",
         help="Ask a question using retrieval-augmented generation (RAG).",
     )
     p_ask.add_argument("question", help="Question to ask against your ingested documents.")
     p_ask.add_argument("--k", type=int, default=4, help="Number of chunks to retrieve.")
+    p_ask.add_argument(
+        "--show-snippets",
+        action="store_true",
+        help="Print short previews of the retrieved chunks before answering.",
+    )
     p_ask.set_defaults(func=cmd_ask)
 
     return parser
