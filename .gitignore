@@ -1,5 +1,6 @@
 env/
 .venv
+.chromadb
 *.pyc
 __pycache__/
 EOF

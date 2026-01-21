@@ -28,6 +28,10 @@ def get_repo_relative_path(*parts: str) -> Path:
 def get_config() -> AppConfig:
     """
     Centralized config for the app.
+
+    We keep the Chroma directory under hw2/.chromadb so it is:
+    - persisted locally
+    - ignored by git via .gitignore
     """
     return AppConfig(
         persist_dir=get_repo_relative_path(".chromadb"),
@@ -60,13 +64,19 @@ def build_vectorstore(config: AppConfig):
     Instantiate a persistent Chroma vectorstore using Google Gemini embeddings.
     """
     try:
-        from langchain_community.vectorstores import Chroma
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        # Newer LangChain prefers langchain-chroma, but we can fall back.
+        try:
+            from langchain_chroma import Chroma  # type: ignore
+        except ImportError:
+            from langchain_community.vectorstores import Chroma  # type: ignore
+
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings  # type: ignore
     except ImportError as e:
-        print("ERROR: Missing dependencies. Did you install requirements?", file=sys.stderr)
-        print("Try running from your repo root:", file=sys.stderr)
+        print("ERROR: Missing dependencies for LangChain/Chroma.", file=sys.stderr)
+        print("Install them from your repo root with uv:", file=sys.stderr)
         print("  uv init --bare", file=sys.stderr)
-        print("  uv add -r requirements.txt", file=sys.stderr)
+        print("  uv add langchain langchain-community langchain-google-genai chromadb", file=sys.stderr)
+        print("  uv add langchain-text-splitters langchain-chroma", file=sys.stderr)
         print(f"\nImport error: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -85,10 +95,81 @@ def build_vectorstore(config: AppConfig):
     return vectorstore
 
 
+def load_gutenberg_docs(url: str):
+    """
+    Load a Project Gutenberg plain-text URL into LangChain Documents.
+
+    This keeps ingestion simple: one URL becomes a document, then we split it
+    into chunks before inserting into Chroma.
+    """
+    try:
+        from langchain_community.document_loaders import GutenbergLoader  # type: ignore
+    except ImportError as e:
+        print("ERROR: GutenbergLoader is not available in your environment.", file=sys.stderr)
+        print("Make sure LangChain community loaders are installed.", file=sys.stderr)
+        print(f"Import error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not url.startswith("http://") and not url.startswith("https://"):
+        print("ERROR: Please provide a full URL (starting with http:// or https://).", file=sys.stderr)
+        sys.exit(1)
+
+    loader = GutenbergLoader(url)
+    docs = loader.load()
+
+    # Make the source obvious and stable when we later cite where something came from.
+    for d in docs:
+        d.metadata = d.metadata or {}
+        d.metadata["source"] = url
+
+    return docs
+
+
+def split_docs(docs, chunk_size: int, chunk_overlap: int):
+    """
+    Split Documents into smaller chunks for embedding and retrieval.
+    A modest overlap helps keep sentence boundaries from being sliced too sharply.
+    """
+    try:
+        # Newer splitters live in langchain-text-splitters, but we can fall back.
+        try:
+            from langchain_text_splitters import RecursiveCharacterTextSplitter  # type: ignore
+        except ImportError:
+            from langchain.text_splitter import RecursiveCharacterTextSplitter  # type: ignore
+    except ImportError as e:
+        print("ERROR: Missing text splitter dependency.", file=sys.stderr)
+        print(f"Import error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    return text_splitter.split_documents(docs)
+
+
+def ingest_documents(vectorstore, docs, chunk_size: int, chunk_overlap: int) -> int:
+    """
+    Ingest Documents into the vectorstore.
+    Returns the number of chunks added.
+    """
+    splits = split_docs(docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+    vectorstore.add_documents(documents=splits)
+
+    # Some Chroma versions persist automatically, but calling persist() is harmless.
+    if hasattr(vectorstore, "persist"):
+        try:
+            vectorstore.persist()
+        except Exception:
+            pass
+
+    return len(splits)
+
+
 def cmd_status(_: argparse.Namespace) -> int:
     """
     Print the app configuration and verify we can initialize the vectorstore.
-    Smoke test for environment before adding RAG logic.
+    This is a safe 'smoke test' for your environment before adding RAG logic.
     """
     config = get_config()
 
@@ -125,6 +206,38 @@ def cmd_reset_db(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_add_gutenberg(args: argparse.Namespace) -> int:
+    """
+    Load a Gutenberg book from a URL, chunk it, and store it in Chroma.
+    """
+    config = get_config()
+    require_env("GOOGLE_API_KEY")
+
+    vectorstore = build_vectorstore(config)
+
+    print("== Gutenberg ingestion ==")
+    print(f"URL: {args.url}")
+    print(f"Chunk size: {args.chunk_size}")
+    print(f"Chunk overlap: {args.chunk_overlap}")
+
+    docs = load_gutenberg_docs(args.url)
+    if not docs:
+        print("No documents returned from loader.", file=sys.stderr)
+        return 1
+
+    raw_len = len(docs[0].page_content or "")
+    print(f"Loaded 1 document ({raw_len} chars)")
+
+    chunks_added = ingest_documents(
+        vectorstore,
+        docs,
+        chunk_size=args.chunk_size,
+        chunk_overlap=args.chunk_overlap,
+    )
+    print(f"Inserted {chunks_added} chunks into Chroma")
+    return 0
+
+
 def build_cli() -> argparse.ArgumentParser:
     """Create the command-line interface."""
     parser = argparse.ArgumentParser(
@@ -139,6 +252,15 @@ def build_cli() -> argparse.ArgumentParser:
 
     p_reset = subparsers.add_parser("reset-db", help="Delete local Chroma DB folder.")
     p_reset.set_defaults(func=cmd_reset_db)
+
+    p_add = subparsers.add_parser(
+        "add-gutenberg",
+        help="Ingest a Project Gutenberg plain-text URL into the vector DB.",
+    )
+    p_add.add_argument("url", help="Gutenberg plain-text URL (pgXXXX.txt).")
+    p_add.add_argument("--chunk-size", type=int, default=2000, help="Chunk size in characters.")
+    p_add.add_argument("--chunk-overlap", type=int, default=200, help="Chunk overlap in characters.")
+    p_add.set_defaults(func=cmd_add_gutenberg)
 
     return parser
 
