@@ -1,3 +1,13 @@
+"""
+Jarren Calizo, CS575, Rag App HW (Gutenberg)
+
+A small LangChain RAG tool that ingests a Project Gutenberg text into a local vector DB,
+then answers questions by retrieving relevant chunks firsts
+
+Commands: add-gutenberg, ask, search, sources, reset-db
+### Credentials and settings are supplied via environment variables
+"""
+
 from __future__ import annotations
 
 import argparse
