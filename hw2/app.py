@@ -166,6 +166,68 @@ def ingest_documents(vectorstore, docs, chunk_size: int, chunk_overlap: int) -> 
     return len(splits)
 
 
+def get_llm():
+    """
+    Instantiate the chat model used for answering questions.
+
+    The model name can be overridden with GEMINI_MODEL if you want to experiment.
+    """
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI  # type: ignore
+    except ImportError as e:
+        print("ERROR: Missing langchain-google-genai dependency.", file=sys.stderr)
+        print(f"Import error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    return ChatGoogleGenerativeAI(model=model_name, temperature=0)
+
+
+def format_docs(docs) -> str:
+    """Concatenate retrieved chunks into a single context block."""
+    return "\n\n".join(d.page_content for d in docs if getattr(d, "page_content", None))
+
+
+def build_rag_answer(question: str, docs) -> str:
+    """
+    Generate a grounded answer using only retrieved context.
+
+    The prompt is intentionally strict. If the answer is not in the context,
+    the model should say "I don't know."
+    """
+    try:
+        try:
+            from langchain_core.prompts import ChatPromptTemplate  # type: ignore
+        except ImportError:
+            from langchain.prompts import ChatPromptTemplate  # type: ignore
+
+        try:
+            from langchain_core.output_parsers import StrOutputParser  # type: ignore
+        except ImportError:
+            from langchain.schema.output_parser import StrOutputParser  # type: ignore
+    except ImportError as e:
+        print("ERROR: Missing LangChain core prompt/parser components.", file=sys.stderr)
+        print(f"Import error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    llm = get_llm()
+    context = format_docs(docs)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                "You are an assistant for question-answering tasks. Use the provided context to answer. "
+                "If the answer is not in the context, say \"I don't know\". Use three sentences maximum.",
+            ),
+            ("human", "Question:\n{question}\n\nContext:\n{context}\n\nAnswer:"),
+        ]
+    )
+
+    chain = prompt | llm | StrOutputParser()
+    return chain.invoke({"question": question, "context": context})
+
+
 def cmd_status(_: argparse.Namespace) -> int:
     """
     Print the app configuration and verify we can initialize the vectorstore.
@@ -237,6 +299,60 @@ def cmd_add_gutenberg(args: argparse.Namespace) -> int:
     print(f"Inserted {chunks_added} chunks into Chroma")
     return 0
 
+def retrieve_docs(vectorstore, retriever, query: str, k: int):
+    """
+    Retrieve relevant chunks for a query.
+
+    LangChain has shifted retrievers toward the Runnable interface, so the most
+    reliable call path is retriever.invoke(query). If that is not available,
+    we fall back to similarity_search().
+    """
+    try:
+        if hasattr(retriever, "invoke"):
+            docs = retriever.invoke(query)
+        else:
+            docs = vectorstore.similarity_search(query, k=k)
+    except Exception:
+        docs = vectorstore.similarity_search(query, k=k)
+
+    return docs or []
+
+def cmd_ask(args: argparse.Namespace) -> int:
+    """
+    Ask a question against the local vector database.
+
+    This command retrieves the most relevant chunks and answers strictly from them.
+    """
+    config = get_config()
+    require_env("GOOGLE_API_KEY")
+
+    vectorstore = build_vectorstore(config)
+    retriever = vectorstore.as_retriever(search_kwargs={"k": args.k})
+
+    # Retrieving first keeps the model honest: it should answer from the book, not from memory.
+    docs = retrieve_docs(vectorstore, retriever, args.question, args.k)
+
+    print("== RAG query ==")
+    print(f"Question: {args.question}")
+    print(f"Retrieved chunks: {len(docs)}")
+
+    answer = build_rag_answer(args.question, docs)
+    print("\nAnswer:")
+    print(answer.strip())
+
+    # A small breadcrumb trail so you can prove grounding in your screencast.
+    sources = []
+    for d in docs:
+        src = (d.metadata or {}).get("source", "unknown")
+        if src not in sources:
+            sources.append(src)
+
+    print("\nSources:")
+    for s in sources:
+        print(f"- {s}")
+
+    return 0
+
 
 def build_cli() -> argparse.ArgumentParser:
     """Create the command-line interface."""
@@ -261,6 +377,14 @@ def build_cli() -> argparse.ArgumentParser:
     p_add.add_argument("--chunk-size", type=int, default=2000, help="Chunk size in characters.")
     p_add.add_argument("--chunk-overlap", type=int, default=200, help="Chunk overlap in characters.")
     p_add.set_defaults(func=cmd_add_gutenberg)
+
+    p_ask = subparsers.add_parser(
+        "ask",
+        help="Ask a question using retrieval-augmented generation (RAG).",
+    )
+    p_ask.add_argument("question", help="Question to ask against your ingested documents.")
+    p_ask.add_argument("--k", type=int, default=4, help="Number of chunks to retrieve.")
+    p_ask.set_defaults(func=cmd_ask)
 
     return parser
 
