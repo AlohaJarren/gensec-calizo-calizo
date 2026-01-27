@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -76,6 +78,129 @@ def _get_tool_decorator():
     except Exception:
         from langchain.tools import tool  # type: ignore
         return tool
+
+
+def _is_command_safe(cmd: str) -> bool:
+    """
+    A small guardrail: only allow read-style commands.
+    """
+    s = (cmd or "").strip().lower()
+    if not s:
+        return False
+
+    banned = [
+        "rm ",
+        "rm\t",
+        "sudo",
+        "chmod",
+        "chown",
+        "mv ",
+        "dd ",
+        "mkfs",
+        "shutdown",
+        "reboot",
+        "kill ",
+        "pkill",
+        "apt ",
+        "apt-get",
+        "yum ",
+        "dnf ",
+        "pacman",
+        "service ",
+        "systemctl ",
+        ">",
+        ">>",
+        "| sh",
+        "| bash",
+        "curl ",
+        "wget ",
+    ]
+
+    for b in banned:
+        if b in s:
+            return False
+
+    allowed_prefixes = (
+        "ls",
+        "pwd",
+        "whoami",
+        "id",
+        "date",
+        "uname",
+        "cat",
+        "head",
+        "tail",
+        "grep",
+        "find",
+        "du",
+        "df",
+        "stat",
+        "wc",
+        "echo",
+        "tree",
+        "sed",
+        "awk",
+        "cut",
+        "sort",
+        "uniq",
+        "tr",
+    )
+
+    parts = s.split()
+    if not parts:
+        return False
+
+    return parts[0] in allowed_prefixes
+
+
+def _run_shell_command(cmd: str) -> str:
+    """
+    Execute a shell command and return combined stdout/stderr.
+    """
+    try:
+        p = subprocess.run(
+            cmd,
+            shell=True,
+            text=True,
+            capture_output=True,
+        )
+        out = (p.stdout or "") + (p.stderr or "")
+        out = out.strip()
+        if not out:
+            return "(no output)"
+        return out
+    except Exception as e:
+        return f"Command execution failed: {e}"
+
+
+def _build_terminal_tool():
+    """
+    Terminal tool with a human approval gate. (the agent can propose a command, but the user decides whether it runs)
+    """
+    tool = _get_tool_decorator()
+
+    @tool("terminal")
+    def terminal(command: str) -> str:
+        """
+        Execute a read-only shell command after human approval.
+        """
+        cmd = (command or "").strip()
+
+        if not _is_command_safe(cmd):
+            return (
+                "Refused: command is outside my read-only boundary. "
+                "Try a safer alternative like ls, find, grep, du, or cat."
+            )
+
+        print("\nProposed terminal command:")
+        print(cmd)
+        ans = input("\nRun it? (y/N): ").strip().lower()
+        if ans != "y":
+            return "User declined to run the command."
+
+        return _run_shell_command(cmd)
+
+    return terminal
 
 
 def _build_gutenberg_tools():
@@ -190,6 +315,77 @@ def _build_gutenberg_tools():
     return [gutenberg_ingest, gutenberg_ask, gutenberg_sources]
 
 
+def _looks_like_url(s: str) -> bool:
+    """Small helper for spotting URLs inside a user query."""
+    return bool(re.search(r"https?://\S+", s or ""))
+
+def _maybe_answer_from_persisted_gutenberg(query: str, k: int = 4) -> str | None:
+    """
+    If the user references an "ingested" book but provides no URL, try the persisted DB first.
+    If the DB is empty, return None and let the agent handle it.
+    """
+    q = (query or "").strip()
+    if not q:
+        return None
+
+    if _looks_like_url(q):
+        return None
+
+    ql = q.lower()
+    triggers = (
+        "ingested",
+        "gutenberg",
+        "from the ingested",
+        "from the book",
+        "summarize the beginning",
+    )
+    if not any(t in ql for t in triggers):
+        return None
+
+    try:
+        _add_repo_root_to_syspath()
+        from hw2.app import (  # type: ignore
+            build_rag_answer,
+            build_vectorstore,
+            get_db_sources,
+            retrieve_docs,
+        )
+
+        config = _get_hw3_rag_config()
+        vectorstore = build_vectorstore(config)
+
+        total, counts = get_db_sources(vectorstore)
+        if not counts:
+            return None
+
+        print("Calling tools: ['gutenberg_sources']")
+
+        retriever = vectorstore.as_retriever(search_kwargs={"k": k})
+        docs = retrieve_docs(vectorstore, retriever, q, k)
+        if not docs:
+            return None
+
+        print("Calling tools: ['gutenberg_ask']")
+
+        answer = build_rag_answer(q, docs)
+
+        sources = []
+        for d in docs:
+            src = (d.metadata or {}).get("source", "unknown")
+            if src not in sources:
+                sources.append(src)
+
+        lines = []
+        lines.append(answer.strip())
+        lines.append("")
+        lines.append("Sources:")
+        for s in sources:
+            lines.append(f"- {s}")
+
+        return "\n".join(lines).strip()
+    except Exception:
+        return None
+
 def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
     """
     Run a minimal agent powered by Brave Search.
@@ -206,6 +402,10 @@ def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
     if not _require_env_soft("GOOGLE_API_KEY"):
         print("ERROR: Missing GOOGLE_API_KEY.", file=sys.stderr)
         return ""
+
+    auto = _maybe_answer_from_persisted_gutenberg(query, k=4)
+    if auto:
+        return auto
 
     brave_key = _require_env_soft("BRAVE_SEARCH_API_KEY")
     if not brave_key:
@@ -224,8 +424,9 @@ def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
     llm = get_llm()
     search = BraveSearch.from_api_key(api_key=brave_key, search_kwargs={"count": count})
     rag_tools = _build_gutenberg_tools()
+    terminal_tool = _build_terminal_tool()
 
-    tools = [search] + rag_tools
+    tools = [search] + rag_tools + [terminal_tool]
 
     instructions = (
         "You are a helpful assistant with tools. "
@@ -235,6 +436,7 @@ def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
         "If the user asks about the book but does not provide a URL, call gutenberg_sources first. "
         "If sources exist, proceed with gutenberg_ask and stay grounded in the retrieved chunks. "
         "If no sources exist, ask the user for a Gutenberg URL to ingest. "
+        "Use the terminal tool only for read-only inspection commands. "
         f"Use at most {max_tool_calls} tool calls. "
         "If you are not confident, say what you do not know."
     )
@@ -244,8 +446,7 @@ def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
         tools=tools,
         system_prompt=instructions,
     )
-    
-    # Stream the agent state so the terminal shows tool activity while it runs.
+
     final_text = ""
     try:
         for chunk in agent.stream(
@@ -274,7 +475,7 @@ def _agent_cli(argv: list[str]) -> int:
     """HW3 agent mode - Brave Search first, then we layer in more tools."""
     parser = argparse.ArgumentParser(
         prog="hw3 agent",
-        description="HW3 agent mode (create_agent + Brave Search + Gutenberg RAG tools).",
+        description="HW3 agent mode (create_agent + Brave Search + Gutenberg tools + Terminal).",
     )
     parser.add_argument("query", nargs="?", help="One-shot query. If omitted, runs interactive mode.")
     parser.add_argument("--count", type=int, default=3, help="Number of Brave results to fetch.")
