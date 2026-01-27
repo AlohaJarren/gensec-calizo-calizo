@@ -1,3 +1,18 @@
+"""
+CS 575 - HW3 Agent App
+
+A small LangChain agent that blends:
+- Brave Search for fresh web context
+- A local Project Gutenberg RAG store (reusing hw2/app.py)
+- A guarded Terminal tool with human approval
+- The Gutenberg vector DB persists under hw3/.chromadb, so I can ingest once andask follow-up questions across separate runs.
+
+Commands:
+- agent (one-shot or interactive)
+- all hw2 commands (passed through when not in agent mode)
+### Credentials and settings are supplied via environment variables.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -19,9 +34,7 @@ def _add_repo_root_to_syspath() -> None:
 
 
 def _print_trace_from_message(msg) -> None:
-    """
-    Print a compact, human-readable trace line for tool activity.
-    """
+    """Print a compact trace line for tool activity."""
     cls = msg.__class__.__name__
     tool_calls = getattr(msg, "tool_calls", None)
 
@@ -46,15 +59,13 @@ def _require_env_soft(var_name: str) -> str:
     """
     Return an env var if set, else return an empty string.
 
-    In agent mode, a missing key should be surfaced as a limitation, not a hard exit.
+    In agent mode, a missing key is a limitation to surface, not a hard exit.
     """
     return os.getenv(var_name, "").strip()
 
 
 def _get_hw3_rag_config():
-    """
-    Reuse HW2's vectorstore builder, but store HW3 data under hw3/.chromadb.
-    """
+    """Reuse HW2's vectorstore builder, but store HW3 data under hw3/.chromadb."""
     _add_repo_root_to_syspath()
     from hw2.app import AppConfig, get_config  # type: ignore
 
@@ -69,9 +80,7 @@ def _get_hw3_rag_config():
 
 
 def _get_tool_decorator():
-    """
-    Import the @tool decorator across LangChain versions.
-    """
+    """Import the @tool decorator across LangChain versions."""
     try:
         from langchain_core.tools import tool  # type: ignore
         return tool
@@ -154,9 +163,7 @@ def _is_command_safe(cmd: str) -> bool:
 
 
 def _run_shell_command(cmd: str) -> str:
-    """
-    Execute a shell command and return combined stdout/stderr.
-    """
+    """Execute a shell command and return combined stdout/stderr."""
     try:
         p = subprocess.run(
             cmd,
@@ -174,16 +181,12 @@ def _run_shell_command(cmd: str) -> str:
 
 
 def _build_terminal_tool():
-    """
-    Terminal tool with a human approval gate. (the agent can propose a command, but the user decides whether it runs)
-    """
+    """Terminal tool with a human approval gate."""
     tool = _get_tool_decorator()
 
     @tool("terminal")
     def terminal(command: str) -> str:
-        """
-        Execute a read-only shell command after human approval.
-        """
+        """Execute a read-only shell command after human approval."""
         cmd = (command or "").strip()
 
         if not _is_command_safe(cmd):
@@ -204,9 +207,7 @@ def _build_terminal_tool():
 
 
 def _build_gutenberg_tools():
-    """
-    Wrap the HW2 RAG logic as tools so the agent can drive it.
-    """
+    """Wrap the HW2 RAG logic as tools so the agent can drive it."""
     _add_repo_root_to_syspath()
 
     from hw2.app import (  # type: ignore
@@ -224,7 +225,6 @@ def _build_gutenberg_tools():
     def gutenberg_ingest(url: str, chunk_size: int = 2000, chunk_overlap: int = 200) -> str:
         """
         Ingest a Project Gutenberg plain-text URL into the local vector database.
-        * Use this when the user provides a Gutenberg URL and wants the agent to load it before asking questions about the book.
         """
         key = _require_env_soft("GOOGLE_API_KEY")
         if not key:
@@ -243,10 +243,7 @@ def _build_gutenberg_tools():
 
     @tool("gutenberg_ask")
     def gutenberg_ask(question: str, k: int = 4) -> str:
-        """
-        Ask a question using the local Gutenberg vector database.
-        * Use this when the user asks something that should be answered from the ingested book.
-        """
+        """Ask a question using the local Gutenberg vector database."""
         key = _require_env_soft("GOOGLE_API_KEY")
         if not key:
             return "Missing GOOGLE_API_KEY. Set it in your shell before using RAG."
@@ -282,9 +279,7 @@ def _build_gutenberg_tools():
 
     @tool("gutenberg_sources")
     def gutenberg_sources() -> str:
-        """
-        List the sources stored in the local Gutenberg vector database.
-        """
+        """List the sources stored in the local Gutenberg vector database."""
         key = _require_env_soft("GOOGLE_API_KEY")
         if not key:
             return "Missing GOOGLE_API_KEY. Set it in your shell before using RAG."
@@ -388,7 +383,7 @@ def _maybe_answer_from_persisted_gutenberg(query: str, k: int = 4) -> str | None
 
 def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
     """
-    Run a minimal agent powered by Brave Search.
+    Run an agent powered by Brave Search, local RAG tools, and a guarded Terminal tool.
     """
     _add_repo_root_to_syspath()
 
@@ -472,10 +467,10 @@ def _run_brave_agent(query: str, count: int, max_tool_calls: int) -> str:
 
 
 def _agent_cli(argv: list[str]) -> int:
-    """HW3 agent mode - Brave Search first, then we layer in more tools."""
+    """HW3 agent mode - one-shot or interactive."""
     parser = argparse.ArgumentParser(
         prog="hw3 agent",
-        description="HW3 agent mode (create_agent + Brave Search + Gutenberg tools + Terminal).",
+        description="HW3 agent mode (Brave Search + Gutenberg tools + Terminal).",
     )
     parser.add_argument("query", nargs="?", help="One-shot query. If omitted, runs interactive mode.")
     parser.add_argument("--count", type=int, default=3, help="Number of Brave results to fetch.")
