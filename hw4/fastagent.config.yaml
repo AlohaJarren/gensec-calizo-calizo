@@ -1,9 +1,11 @@
-default_model: "google.gemini-2.5-flash"
-
 mcp:
   servers:
-    nhi_stdio:
+    nhi:
       command: "python"
       args: ["mcp-server.py", "stdio"]
 
-# for Okta MCP http impl later once server & agent loop is good
+    memory:
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-memory"]
+      env:
+        MEMORY_FILE_PATH: "./data/memory.jsonl"
