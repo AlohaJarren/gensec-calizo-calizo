@@ -52,7 +52,7 @@ class AgentState:
     last_blast: Optional[Dict[str, Any]] = None
     last_plan: Optional[Dict[str, Any]] = None
     last_patch: Optional[Dict[str, Any]] = None
-
+    last_sim: Optional[Dict[str, Any]] = None
 
 def _memory_docker_params(memory_dir: Path) -> StdioServerParameters:
     memory_dir.mkdir(parents=True, exist_ok=True)
@@ -251,6 +251,39 @@ def _build_patch_payloads(scan: Dict[str, Any], scored: Dict[str, Any], patch: D
 
     return entities, relations
 
+def _build_sim_payloads(scan: Dict[str, Any], sim: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    entities: List[Dict[str, Any]] = []
+    relations: List[Dict[str, Any]] = []
+
+    scan_id = scan.get("scan_id", "unknown_scan")
+    scan_name = f"scan:{scan_id}"
+
+    match = sim.get("match", {})
+    simulation = sim.get("simulation", {})
+
+    fp = match.get("secret_fingerprint", "unknown_fp")
+    secret_node = f"secret:{fp[:12]}"
+
+    note_name = f"sim:{scan_id}:{fp[:12]}"
+
+    entities.append(
+        {
+            "name": note_name,
+            "entityType": "note",
+            "observations": [
+                "simulation",
+                f"risk={simulation.get('risk', '')}",
+                f"capabilities={'; '.join(simulation.get('capabilities', []))}",
+                f"checks={'; '.join(simulation.get('validation_checks', []))}",
+                f"next={'; '.join(simulation.get('suggested_next_step', []))}",
+            ],
+        }
+    )
+
+    relations.append({"from": note_name, "to": scan_name, "relationType": "derived_from"})
+    relations.append({"from": note_name, "to": secret_node, "relationType": "about"})
+
+    return entities, relations
 
 async def _ainput(prompt: str) -> str:
     return await asyncio.to_thread(input, prompt)
@@ -383,6 +416,31 @@ async def run() -> None:
                 print(_safe_json(state.last_patch))
                 continue
 
+            if line.startswith("simulate "):
+                if not state.last_scored or "scored" not in state.last_scored:
+                    print("No scored findings in state. Run: score")
+                    continue
+
+                parts = [p for p in line.split() if p.strip()]
+                if len(parts) < 2:
+                    print("Usage: simulate <secret_prefix> [action]")
+                    continue
+
+                secret_prefix = parts[1]
+                action = parts[2] if len(parts) >= 3 else "read"
+
+                res = await nhi_sess.call_tool(
+                    "simulate_agent_action",
+                    {"scored_findings": state.last_scored["scored"], "secret_prefix": secret_prefix, "action": action},
+                )
+                text = _result_to_text(res)
+                parsed = _try_parse_json(text)
+                state.last_sim = parsed if parsed is not None else {"raw": text}
+
+                print("\nsimulation:")
+                print(_safe_json(state.last_sim))
+                continue
+
             if line == "store":
                 if not state.last_scan or not state.last_scored:
                     print("Need scan + score first.")
@@ -403,6 +461,16 @@ async def run() -> None:
                 await mem_sess.call_tool("create_entities", {"entities": e2})
                 await mem_sess.call_tool("create_relations", {"relations": r2})
                 print(f"Stored patch: {len(e2)} entities, {len(r2)} relations")
+                continue
+
+            if line == "storesim":
+                if not state.last_scan or not state.last_sim:
+                    print("Need scan + simulate first.")
+                    continue
+                e3, r3 = _build_sim_payloads(state.last_scan, state.last_sim)
+                await mem_sess.call_tool("create_entities", {"entities": e3})
+                await mem_sess.call_tool("create_relations", {"relations": r3})
+                print(f"Stored simulation: {len(e3)} entities, {len(r3)} relations")
                 continue
 
             if line.startswith("search "):

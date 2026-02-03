@@ -583,6 +583,155 @@ async def propose_least_privilege_patch(scored_findings: List[Dict[str, Any]], r
     ]
     return {"plan": plan, "notes": notes}
 
+def _capability_sketch(kind: str, action: str, environment: str, system: str) -> Dict[str, Any]:
+    """
+    Give a bounded, non-exploitative sketch of what a credential might allow.
+
+    This is intentionally conservative and descriptive. It does not try to execute
+    anything and it does not claim certainty.
+    """
+    action = (action or "read").strip().lower()
+    env = (environment or "unknown").strip().lower()
+    sysname = (system or "unknown").strip().lower()
+
+    guardrails = [
+        "No real requests are made. This is a simulated analysis.",
+        "Treat as a hypothesis until validated by logs and owners.",
+        "Do not paste secrets into prompts or tickets.",
+    ]
+
+    if kind == "aws_access_key_id":
+        capabilities = [
+            "Potential to call AWS APIs within the key's IAM permissions.",
+            "Common surfaces: S3, Secrets Manager, STS, IAM, CloudWatch.",
+        ]
+        risk = "High" if env == "prod" else "Medium"
+        checks = [
+            "Check CloudTrail for recent API calls tied to this access key.",
+            "Confirm if the key is still active and which IAM principal owns it.",
+            "Identify attached policies and any wildcard resources/actions.",
+        ]
+    elif kind == "github_pat":
+        capabilities = [
+            "Potential to read/write repositories depending on token scope.",
+            "Possible access to CI secrets via workflows, actions, or repo settings.",
+        ]
+        risk = "High" if env == "prod" else "Medium"
+        checks = [
+            "Review token scopes and whether it is fine-grained or classic.",
+            "Check audit logs for token use and unusual repo access.",
+            "Confirm if token is used by CI and whether it can be replaced by a GitHub App.",
+        ]
+    elif kind == "google_api_key":
+        capabilities = [
+            "Potential to access enabled Google APIs permitted by the key.",
+            "Impact depends on key restrictions (referrer, IP, API allowlist).",
+        ]
+        risk = "High" if env == "prod" else "Medium"
+        checks = [
+            "Check API key restrictions and enabled APIs.",
+            "Check billing or quota anomalies around the key's usage.",
+            "Split keys by environment and rotate if leaked.",
+        ]
+    elif kind == "slack_token":
+        capabilities = [
+            "Potential to call Slack Web API within bot/user token scopes.",
+            "May access channels, messages, and automation hooks depending on scopes.",
+        ]
+        risk = "Medium" if env == "prod" else "Low"
+        checks = [
+            "Check Slack app scopes and which workspace it targets.",
+            "Review app audit logs for suspicious calls or mass exports.",
+            "Rotate token and reduce scopes where possible.",
+        ]
+    elif kind == "private_key_block":
+        capabilities = [
+            "Key material can unlock authentication flows depending on where it is used.",
+            "Possible SSH, signing, or service-to-service auth.",
+        ]
+        risk = "High"
+        checks = [
+            "Identify where this key is trusted (authorized_keys, known hosts, signing keys).",
+            "Rotate immediately and remove from repo history.",
+            "Search for the public key or fingerprint across infra.",
+        ]
+    elif kind == "jwt_like":
+        capabilities = [
+            "Bearer token may grant access until expiry if still valid.",
+            "Impact depends on audience/issuer and backend validation.",
+        ]
+        risk = "High" if env == "prod" else "Medium"
+        checks = [
+            "Confirm token validity window and intended audience.",
+            "Check logs for token reuse from unusual IPs or agents.",
+            "Reduce token lifetime and enforce strict audience/issuer checks.",
+        ]
+    else:
+        capabilities = [
+            "This looks like a credential or secret material, but confidence may be low.",
+            "If real, it could provide access inside its unknown scope.",
+        ]
+        risk = "Medium" if env == "prod" else "Low"
+        checks = [
+            "Validate if it is a real secret and whether it is still in use.",
+            "Identify owner and rotate if it maps to a live credential.",
+        ]
+
+    suggested_next = []
+    if action in {"write", "delete", "admin"}:
+        suggested_next.append("Assume worst-case until you confirm scopes. Reduce permissions first, then rotate.")
+    else:
+        suggested_next.append("Start with logs and ownership. Rotate only after you understand dependencies.")
+
+    return {
+        "inputs": {"kind": kind, "action": action, "environment": env, "system": sysname},
+        "risk": risk,
+        "capabilities": capabilities,
+        "validation_checks": checks,
+        "suggested_next_step": suggested_next,
+        "guardrails": guardrails,
+    }
+
+
+@mcp.tool()
+async def simulate_agent_action(scored_findings: List[Dict[str, Any]], secret_prefix: str, action: str = "read") -> Dict[str, Any]:
+    """
+    Simulate what an agent could do if it obtained a token/secret.
+
+    Args:
+        scored_findings: The scored findings list from score_findings["scored"].
+        secret_prefix: The first 6-12 chars of secret_fingerprint, or the 12-char secret node suffix.
+        action: A hint like "read", "write", "delete", "admin".
+
+    Returns:
+        {
+          "match": { ... finding fields ... },
+          "simulation": { ... capability sketch ... }
+        }
+    """
+    if not scored_findings:
+        return {"error": "no scored_findings provided"}
+
+    prefix = (secret_prefix or "").strip().lower()
+    if not prefix:
+        return {"error": "secret_prefix is required"}
+
+    match: Optional[Dict[str, Any]] = None
+    for f in scored_findings:
+        fp = (f.get("secret_fingerprint") or "").lower()
+        if fp.startswith(prefix):
+            match = f
+            break
+
+    if match is None:
+        return {"error": f"no finding matched prefix={secret_prefix}"}
+
+    kind = match.get("kind", "unknown")
+    env = match.get("environment", "unknown")
+    system = match.get("system", "unknown")
+
+    sim = _capability_sketch(kind=kind, action=action, environment=env, system=system)
+    return {"match": match, "simulation": sim}
 
 def _run_stdio() -> None:
     mcp.run(transport="stdio")
