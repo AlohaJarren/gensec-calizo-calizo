@@ -1,0 +1,9 @@
+default_model: "google.gemini-2.5-flash"
+
+mcp:
+  servers:
+    nhi_stdio:
+      command: "python"
+      args: ["mcp-server.py", "stdio"]
+
+# for Okta MCP http impl later once server & agent loop is good
