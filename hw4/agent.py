@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,15 +49,11 @@ def _try_parse_json(text: str) -> Optional[Any]:
 class AgentState:
     last_scan: Optional[Dict[str, Any]] = None
     last_scored: Optional[Dict[str, Any]] = None
+    last_blast: Optional[Dict[str, Any]] = None
     last_plan: Optional[Dict[str, Any]] = None
 
 
 def _memory_docker_params(memory_dir: Path) -> StdioServerParameters:
-    """
-    Official Docker Hub guidance shows running the memory server via:
-      docker run -i --rm -v /local-directory:/local-directory mcp/memory
-    We additionally set MEMORY_FILE_PATH so the graph persists in your repo folder. :contentReference[oaicite:3]{index=3}
-    """
     memory_dir.mkdir(parents=True, exist_ok=True)
     host_mount = str(memory_dir.resolve())
     memory_file = "/local-directory/hw4_memory.jsonl"
@@ -90,23 +85,35 @@ async def _list_tools(session: ClientSession, label: str) -> None:
     tools = getattr(res, "tools", [])
     print(f"\n[{label}] tools loaded: {len(tools)}")
     for t in tools:
-        # Each tool typically has: name, description, inputSchema
         print(f"- {t.name}")
+
+
+def _relpath_or_raw(scanned_root: str, file_path: str) -> str:
+    try:
+        root = Path(scanned_root).resolve()
+        fp = Path(file_path).resolve()
+        return str(fp.relative_to(root))
+    except Exception:
+        return file_path
 
 
 def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     """
     Convert scan/scored output into memory server entities and relations.
 
-    Memory schema (entities/relations) follows:
-    - entity: { "name": str, "entityType": str, "observations": [str, ...] }
-    - relation: { "from": str, "to": str, "relationType": str } :contentReference[oaicite:4]{index=4}
+    Entity shape:
+      { "name": str, "entityType": str, "observations": [str, ...] }
+    Relation shape:
+      { "from": str, "to": str, "relationType": str }
     """
     entities: List[Dict[str, Any]] = []
     relations: List[Dict[str, Any]] = []
 
     scanned_root = scan.get("scanned_root", "unknown_root")
+    scan_id = scan.get("scan_id", "unknown_scan")
     repo_name = f"repo:{Path(scanned_root).name}"
+    scan_name = f"scan:{scan_id}"
+
     entities.append(
         {
             "name": repo_name,
@@ -114,20 +121,42 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
             "observations": [f"scanned_root={scanned_root}"],
         }
     )
+    entities.append(
+        {
+            "name": scan_name,
+            "entityType": "scan",
+            "observations": [
+                f"scan_id={scan_id}",
+                f"files_scanned={scan.get('files_scanned', 0)}",
+                f"total_findings={scan.get('summary', {}).get('total_findings', 0)}",
+            ],
+        }
+    )
+    relations.append({"from": scan_name, "to": repo_name, "relationType": "scanned"})
 
     scored_list = scored.get("scored", [])
     for f in scored_list:
-        file_path = f.get("file", "unknown_file")
-        file_node = f"file:{file_path}"
+        file_raw = f.get("file", "unknown_file")
+        file_rel = _relpath_or_raw(scanned_root, file_raw)
+        file_node = f"file:{file_rel}"
         fp = f.get("secret_fingerprint", "unknown_fp")
         secret_node = f"secret:{fp[:12]}"
+
+        owner_email = (f.get("owner_email") or "").strip()
+        owner_node = f"owner:{owner_email}" if owner_email else ""
+
+        env = (f.get("environment") or "unknown").strip()
+        env_node = f"env:{env}"
+
+        system = (f.get("system") or "unknown").strip()
+        system_node = f"system:{system}"
 
         # File entity
         entities.append(
             {
                 "name": file_node,
                 "entityType": "file",
-                "observations": [f"path={file_path}"],
+                "observations": [f"path={file_rel}"],
             }
         )
 
@@ -141,19 +170,59 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
                     f"confidence={f.get('confidence', 'unknown')}",
                     f"risk_score={f.get('risk_score', '0')}",
                     f"preview={f.get('secret_preview', '***')}",
+                    f"location_hint={f.get('location_hint', '')}",
+                    f"blast_radius={f.get('blast_radius', '')}",
                 ],
             }
         )
 
+        # Context entities
+        entities.append(
+            {
+                "name": env_node,
+                "entityType": "environment",
+                "observations": [f"name={env}"],
+            }
+        )
+        entities.append(
+            {
+                "name": system_node,
+                "entityType": "system",
+                "observations": [f"name={system}"],
+            }
+        )
+        if owner_node:
+            entities.append(
+                {
+                    "name": owner_node,
+                    "entityType": "owner",
+                    "observations": [f"email={owner_email}"],
+                }
+            )
+
         # Relations
         relations.append({"from": secret_node, "to": file_node, "relationType": "found_in"})
         relations.append({"from": file_node, "to": repo_name, "relationType": "belongs_to"})
+        relations.append({"from": scan_name, "to": secret_node, "relationType": "reported"})
+
+        relations.append({"from": secret_node, "to": env_node, "relationType": "scoped_to"})
+        relations.append({"from": secret_node, "to": system_node, "relationType": "touches"})
+
+        if owner_node:
+            relations.append({"from": secret_node, "to": owner_node, "relationType": "owned_by"})
 
     return entities, relations
 
 
 async def _ainput(prompt: str) -> str:
     return await asyncio.to_thread(input, prompt)
+
+
+def _print_blast_summary(blast: Dict[str, Any]) -> None:
+    summary = blast.get("summary", [])
+    notes = blast.get("notes", [])
+    print("\nblast radius summary:")
+    print(_safe_json({"summary": summary, "notes": notes}))
 
 
 async def run() -> None:
@@ -194,6 +263,7 @@ async def run() -> None:
                     "  tools                 - list tools from both servers\n"
                     "  scan <path>           - scan a path for NHI artifacts\n"
                     "  score                 - score last scan findings\n"
+                    "  blast                 - summarize blast radius for last scored\n"
                     "  plan                  - remediation plan for last scored\n"
                     "  store                 - store last scored findings into memory graph\n"
                     "  search <query>        - search memory graph\n"
@@ -235,6 +305,17 @@ async def run() -> None:
                 print(_safe_json(state.last_scored))
                 continue
 
+            if line == "blast":
+                if not state.last_scored or "scored" not in state.last_scored:
+                    print("No scored findings in state. Run: score")
+                    continue
+                res = await nhi_sess.call_tool("summarize_blast_radius", {"scored_findings": state.last_scored["scored"], "top_n": 8})
+                text = _result_to_text(res)
+                parsed = _try_parse_json(text)
+                state.last_blast = parsed if parsed is not None else {"raw": text}
+                _print_blast_summary(state.last_blast if isinstance(state.last_blast, dict) else {})
+                continue
+
             if line == "plan":
                 if not state.last_scored or "scored" not in state.last_scored:
                     print("No scored findings in state. Run: score")
@@ -254,7 +335,6 @@ async def run() -> None:
                     continue
                 entities, relations = _build_memory_payloads(state.last_scan, state.last_scored)
 
-                # Create entities and relations
                 await mem_sess.call_tool("create_entities", {"entities": entities})
                 await mem_sess.call_tool("create_relations", {"relations": relations})
 

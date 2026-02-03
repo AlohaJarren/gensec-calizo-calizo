@@ -7,6 +7,7 @@ import hashlib
 import os
 import re
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -27,8 +28,7 @@ class Pattern:
 
 
 def _compile_patterns() -> List[Pattern]:
-    # NOTE: Keep these broad and heuristic. We are demonstrating the concept,
-    # not building a perfect secret scanner.
+    # NOTE: These are heuristic patterns. Expect noise.
     raw: List[Tuple[str, str, int]] = [
         ("aws_access_key_id", r"\bAKIA[0-9A-Z]{16}\b", 90),
         ("github_pat", r"\bghp_[A-Za-z0-9]{36}\b", 85),
@@ -41,6 +41,8 @@ def _compile_patterns() -> List[Pattern]:
             r"(?i)\b(api[_-]?key|access[_-]?key|secret|token|password)\b\s*[:=]\s*['\"]?([A-Za-z0-9_/\-]{12,})",
             55,
         ),
+        # JWT-like tokens are sensitive, but not always a credential.
+        ("jwt_like", r"\beyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\b", 60),
     ]
     return [Pattern(n, re.compile(rx), w) for (n, rx, w) in raw]
 
@@ -65,6 +67,10 @@ TEXT_FILE_EXT_ALLOWLIST = {
     ".zsh",
     ".properties",
 }
+
+OWNER_HINT = re.compile(
+    r"(?i)\b(owner|contact|maintainer)\b\s*[:=]\s*([A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,})"
+)
 
 
 def _is_probably_text(path: Path, max_bytes: int = 1024) -> bool:
@@ -115,8 +121,72 @@ def _should_scan_file(path: Path, max_file_kb: int) -> bool:
     return _is_probably_text(path)
 
 
-def _extract_findings_from_text(text: str) -> List[Dict[str, Any]]:
+def _infer_environment(file_path: str) -> str:
+    p = file_path.lower()
+    if "prod" in p or "production" in p or "live" in p:
+        return "prod"
+    if "stage" in p or "staging" in p:
+        return "stage"
+    if "dev" in p or "local" in p or "sandbox" in p:
+        return "dev"
+    return "unknown"
+
+
+def _infer_system(file_path: str) -> str:
+    p = file_path.lower()
+    if ".github/workflows" in p or "gitlab-ci" in p or "jenkins" in p:
+        return "ci"
+    if "k8s" in p or "kubernetes" in p or "helm" in p:
+        return "k8s"
+    if "terraform" in p or "pulumi" in p or "cloudformation" in p:
+        return "iac"
+    if "dockerfile" in p or "docker" in p or "container" in p:
+        return "container"
+    return "app"
+
+
+def _blast_radius(kind: str, environment: str) -> str:
+    base = "Medium"
+    detail = "Credential exposure can widen quietly if it lives long enough."
+    if kind == "private_key_block":
+        base = "High"
+        detail = "Key material can unlock broad access (SSH, signing, or service auth)."
+    elif kind == "aws_access_key_id":
+        base = "High"
+        detail = "Cloud API access can pivot fast across services if permissions are wide."
+    elif kind == "github_pat":
+        base = "High"
+        detail = "Repo access can lead to CI secrets, releases, and lateral movement."
+    elif kind == "slack_token":
+        base = "Medium"
+        detail = "Bot tokens can expose channels, files, and automation hooks."
+    elif kind == "google_api_key":
+        base = "Medium"
+        detail = "Impact depends on key restrictions (referrer, IP, API scope)."
+    elif kind == "jwt_like":
+        base = "Medium"
+        detail = "JWTs can act like identity tickets if they are still valid."
+    elif kind == "generic_secret_assignment":
+        base = "Low"
+        detail = "Could be a real secret or a false positive. Validate before rotating."
+
+    if environment == "prod" and base != "High":
+        base = "High"
+
+    return f"{base} - {detail}"
+
+
+def _extract_owner_email(text: str) -> str:
+    m = OWNER_HINT.search(text)
+    if not m:
+        return ""
+    return m.group(2).strip()
+
+
+def _extract_findings_from_text(text: str, file_path: str, owner_email: str) -> List[Dict[str, Any]]:
     findings: List[Dict[str, Any]] = []
+    env = _infer_environment(file_path)
+    system = _infer_system(file_path)
 
     for pat in PATTERNS:
         if pat.name == "generic_secret_assignment":
@@ -124,6 +194,7 @@ def _extract_findings_from_text(text: str) -> List[Dict[str, Any]]:
                 key_name = m.group(1)
                 value = m.group(2)
                 fp = _sha256_hex(value)
+                line_no = text.count("\n", 0, m.start()) + 1
                 findings.append(
                     {
                         "kind": pat.name,
@@ -132,23 +203,35 @@ def _extract_findings_from_text(text: str) -> List[Dict[str, Any]]:
                         "key_name": key_name,
                         "secret_fingerprint": fp,
                         "secret_preview": _redact(value),
+                        "line": line_no,
+                        "owner_email": owner_email,
+                        "environment": env,
+                        "system": system,
+                        "blast_radius": _blast_radius(pat.name, env),
                     }
                 )
         elif pat.name == "private_key_block":
-            for _m in pat.regex.finditer(text):
+            for m in pat.regex.finditer(text):
+                line_no = text.count("\n", 0, m.start()) + 1
                 findings.append(
                     {
                         "kind": pat.name,
                         "confidence": "high",
                         "weight": pat.weight,
-                        "secret_fingerprint": _sha256_hex(pat.name),
+                        "secret_fingerprint": _sha256_hex(f"{file_path}:{line_no}:{pat.name}"),
                         "secret_preview": "-----BEGIN ... PRIVATE KEY-----",
+                        "line": line_no,
+                        "owner_email": owner_email,
+                        "environment": env,
+                        "system": system,
+                        "blast_radius": _blast_radius(pat.name, env),
                     }
                 )
         else:
             for m in pat.regex.finditer(text):
                 value = m.group(0)
                 fp = _sha256_hex(value)
+                line_no = text.count("\n", 0, m.start()) + 1
                 findings.append(
                     {
                         "kind": pat.name,
@@ -156,6 +239,11 @@ def _extract_findings_from_text(text: str) -> List[Dict[str, Any]]:
                         "weight": pat.weight,
                         "secret_fingerprint": fp,
                         "secret_preview": _redact(value),
+                        "line": line_no,
+                        "owner_email": owner_email,
+                        "environment": env,
+                        "system": system,
+                        "blast_radius": _blast_radius(pat.name, env),
                     }
                 )
 
@@ -176,6 +264,7 @@ async def scan_path(path: str, include_hidden: bool = False, max_file_kb: int = 
     Returns:
         A JSON-serializable dict:
           {
+            "scan_id": "...",
             "scanned_root": "...",
             "files_scanned": N,
             "findings": [ { ... } ],
@@ -185,6 +274,8 @@ async def scan_path(path: str, include_hidden: bool = False, max_file_kb: int = 
     root = Path(path).expanduser().resolve()
     if not root.exists():
         return {"error": f"path does not exist: {root}"}
+
+    scan_id = time.strftime("%Y%m%d-%H%M%S", time.localtime())
 
     files: List[Path]
     if root.is_file():
@@ -205,12 +296,13 @@ async def scan_path(path: str, include_hidden: bool = False, max_file_kb: int = 
         except Exception:
             continue
 
-        fnds = _extract_findings_from_text(text)
+        owner_email = _extract_owner_email(text)
+        fnds = _extract_findings_from_text(text, str(fp), owner_email)
+
         for f in fnds:
             f2 = dict(f)
             f2["file"] = str(fp)
-            # We do not include the full line. Provide a stable location hint only.
-            f2["location_hint"] = "n/a"
+            f2["location_hint"] = f"line={f.get('line', 0)}"
             findings_out.append(f2)
             if len(findings_out) >= max_results:
                 break
@@ -220,12 +312,19 @@ async def scan_path(path: str, include_hidden: bool = False, max_file_kb: int = 
 
     summary: Dict[str, Any] = {}
     by_kind: Dict[str, int] = {}
+    by_owner: Dict[str, int] = {}
     for f in findings_out:
         by_kind[f["kind"]] = by_kind.get(f["kind"], 0) + 1
+        o = f.get("owner_email") or ""
+        if o:
+            by_owner[o] = by_owner.get(o, 0) + 1
+
     summary["by_kind"] = by_kind
+    summary["by_owner"] = by_owner
     summary["total_findings"] = len(findings_out)
 
     return {
+        "scan_id": scan_id,
         "scanned_root": str(root),
         "files_scanned": files_scanned,
         "findings": findings_out,
@@ -258,12 +357,22 @@ async def score_findings(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
     for f in findings:
         base = int(f.get("weight", 30))
         conf = f.get("confidence", "low")
+        env = f.get("environment", "unknown")
+        owner = f.get("owner_email") or ""
+
         bump = 0
         if conf == "high":
             bump = 10
         elif conf == "medium":
             bump = 5
-        score = min(100, base + bump)
+
+        context = 0
+        if env == "prod":
+            context += 10
+        if not owner:
+            context += 5
+
+        score = min(100, base + bump + context)
 
         f2 = dict(f)
         f2["risk_score"] = score
@@ -302,6 +411,7 @@ async def remediation_plan(scored_findings: List[Dict[str, Any]], top_n: int = 1
         file_path = f.get("file", "unknown")
         fp = f.get("secret_fingerprint", "unknown")
         score = int(f.get("risk_score", 0))
+        owner = f.get("owner_email") or ""
 
         if kind in {"private_key_block"}:
             action = "rotate_or_revoke_key_material"
@@ -309,9 +419,15 @@ async def remediation_plan(scored_findings: List[Dict[str, Any]], top_n: int = 1
         elif kind in {"aws_access_key_id", "github_pat", "slack_token", "google_api_key"}:
             action = "rotate_secret_and_move_to_env"
             detail = "Rotate the credential and store it in a secret manager or env var injection, not in source."
+        elif kind in {"jwt_like"}:
+            action = "validate_and_rotate_if_active"
+            detail = "Confirm if it is active. If yes, rotate and shorten lifetime where possible."
         else:
             action = "review_and_scope_down"
             detail = "Confirm if this is a real secret. If yes, rotate and scope down permissions."
+
+        if not owner:
+            detail = detail + " Add an owner tag to the file or repo so this does not drift again."
 
         tasks.append(
             {
@@ -320,6 +436,10 @@ async def remediation_plan(scored_findings: List[Dict[str, Any]], top_n: int = 1
                 "priority": "P0" if score >= 90 else ("P1" if score >= 75 else "P2"),
                 "file": file_path,
                 "secret_fingerprint": fp,
+                "owner_email": owner,
+                "environment": f.get("environment", "unknown"),
+                "system": f.get("system", "unknown"),
+                "blast_radius": f.get("blast_radius", ""),
                 "rationale": f"kind={kind}, score={score}",
                 "detail": detail,
             }
@@ -330,6 +450,35 @@ async def remediation_plan(scored_findings: List[Dict[str, Any]], top_n: int = 1
         "This server never returns raw secrets. Only fingerprints/previews.",
     ]
     return {"tasks": tasks, "notes": notes}
+
+
+@mcp.tool()
+async def summarize_blast_radius(scored_findings: List[Dict[str, Any]], top_n: int = 8) -> Dict[str, Any]:
+    """
+    Summarize blast radius for the highest-risk findings.
+
+    This is a short narrative tool: it helps you explain impact without showing secrets.
+    """
+    if not scored_findings:
+        return {"summary": [], "notes": ["no findings provided"]}
+
+    ordered = sorted(scored_findings, key=lambda x: int(x.get("risk_score", 0)), reverse=True)
+    out: List[Dict[str, Any]] = []
+    for f in ordered[:top_n]:
+        out.append(
+            {
+                "risk_score": int(f.get("risk_score", 0)),
+                "kind": f.get("kind", "unknown"),
+                "file": f.get("file", "unknown"),
+                "owner_email": f.get("owner_email") or "",
+                "environment": f.get("environment", "unknown"),
+                "system": f.get("system", "unknown"),
+                "blast_radius": f.get("blast_radius", ""),
+            }
+        )
+
+    notes = ["Impact is contextual. Treat this as a compass, not a courtroom."]
+    return {"summary": out, "notes": notes}
 
 
 def _run_stdio() -> None:
