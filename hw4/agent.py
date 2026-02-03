@@ -295,6 +295,141 @@ def _print_blast_summary(blast: Dict[str, Any]) -> None:
     print("\nblast radius summary:")
     print(_safe_json({"summary": summary, "notes": notes}))
 
+def _pick_latest_scan_id(graph: Dict[str, Any]) -> Optional[str]:
+    """
+    Try to find the latest scan:<timestamp> by lexicographic order.
+    Assumes scan ids are like YYYYMMDD-HHMMSS which sort correctly as strings.
+    """
+    entities = graph.get("entities", []) or []
+    scan_ids: List[str] = []
+    for e in entities:
+        name = (e.get("name") or "").strip()
+        if name.startswith("scan:"):
+            scan_ids.append(name[len("scan:") :])
+    if not scan_ids:
+        return None
+    return sorted(scan_ids)[-1]
+
+
+def _entity_map(graph: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    m: Dict[str, Dict[str, Any]] = {}
+    for e in graph.get("entities", []) or []:
+        name = e.get("name")
+        if name:
+            m[name] = e
+    return m
+
+
+def _relations_from(graph: Dict[str, Any], from_name: str) -> List[Dict[str, Any]]:
+    rels = graph.get("relations", []) or []
+    return [r for r in rels if (r.get("from") or "") == from_name]
+
+
+def _relations_to(graph: Dict[str, Any], to_name: str) -> List[Dict[str, Any]]:
+    rels = graph.get("relations", []) or []
+    return [r for r in rels if (r.get("to") or "") == to_name]
+
+
+def _obs_get(entity: Dict[str, Any], key_prefix: str) -> str:
+    """
+    Pull a single observation string that starts with key_prefix.
+    Example: key_prefix="risk_score=" returns "95" if present.
+    """
+    obs = entity.get("observations", []) or []
+    for o in obs:
+        if isinstance(o, str) and o.startswith(key_prefix):
+            return o[len(key_prefix) :].strip()
+    return ""
+
+
+def _render_report(graph: Dict[str, Any], scan_id: str, max_secrets: int = 5) -> str:
+    emap = _entity_map(graph)
+
+    scan_name = f"scan:{scan_id}"
+    plan_name = f"plan:{scan_id}"
+
+    # Secrets reported by scan.
+    secrets: List[str] = []
+    for r in _relations_from(graph, scan_name):
+        if r.get("relationType") == "reported":
+            to = r.get("to") or ""
+            if to.startswith("secret:"):
+                secrets.append(to)
+
+    # Rank secrets by risk_score observation if present.
+    def secret_score(secret_node: str) -> int:
+        e = emap.get(secret_node, {})
+        v = _obs_get(e, "risk_score=")
+        try:
+            return int(v)
+        except Exception:
+            return -1
+
+    secrets_sorted = sorted(secrets, key=secret_score, reverse=True)
+
+    lines: List[str] = []
+    lines.append(f"report for {scan_name}")
+    lines.append("-" * 60)
+
+    # Scan summary.
+    scan_ent = emap.get(scan_name, {})
+    lines.append("scan:")
+    lines.append(f"- files_scanned: {_obs_get(scan_ent, 'files_scanned=') or 'unknown'}")
+    lines.append(f"- total_findings: {_obs_get(scan_ent, 'total_findings=') or 'unknown'}")
+    lines.append("")
+
+    # Top secrets.
+    lines.append(f"top secrets (by risk_score, up to {max_secrets}):")
+    if not secrets_sorted:
+        lines.append("- none stored yet (run: store)")
+    else:
+        for s in secrets_sorted[:max_secrets]:
+            e = emap.get(s, {})
+            kind = _obs_get(e, "kind=") or "unknown"
+            score = _obs_get(e, "risk_score=") or "?"
+            preview = _obs_get(e, "preview=") or "***"
+            blast = _obs_get(e, "blast_radius=") or ""
+            lines.append(f"- {s} kind={kind} risk_score={score} preview={preview}")
+            if blast:
+                lines.append(f"  blast_radius: {blast}")
+    lines.append("")
+
+    # Plan presence.
+    if plan_name in emap:
+        plan_ent = emap.get(plan_name, {})
+        rollout = _obs_get(plan_ent, "rollout_window=") or "unknown"
+        diff_count = _obs_get(plan_ent, "diff_count=") or "unknown"
+        lines.append("least-privilege plan:")
+        lines.append(f"- node: {plan_name}")
+        lines.append(f"- rollout_window: {rollout}")
+        lines.append(f"- diff_count: {diff_count}")
+    else:
+        lines.append("least-privilege plan:")
+        lines.append("- none stored yet (run: patch then storepatch)")
+    lines.append("")
+
+    # Sim notes about secrets for this scan.
+    sim_notes: List[str] = []
+    for e_name, e in emap.items():
+        if e_name.startswith(f"sim:{scan_id}:"):
+            sim_notes.append(e_name)
+
+    lines.append("simulations:")
+    if not sim_notes:
+        lines.append("- none stored yet (run: simulate then storesim)")
+    else:
+        for n in sorted(sim_notes):
+            ent = emap.get(n, {})
+            risk = ""
+            obs = ent.get("observations", []) or []
+            for o in obs:
+                if isinstance(o, str) and o.startswith("risk="):
+                    risk = o
+                    break
+            lines.append(f"- {n} {risk}".strip())
+    lines.append("-" * 60)
+
+    return "\n".join(lines)
 
 async def run() -> None:
     state = AgentState()
@@ -338,6 +473,7 @@ async def run() -> None:
                     "  store                 - store last scored findings into memory graph\n"
                     "  storepatch            - store last patch plan into memory graph\n"
                     "  search <query>        - search memory graph\n"
+                    "  report                - print a one-screen summary from memory\n"
                     "  open <name> [name..]  - open nodes by exact name\n"
                     "  graph                 - read entire memory graph\n"
                     "  quit                  - exit\n"
@@ -497,6 +633,23 @@ async def run() -> None:
                 parsed = _try_parse_json(text)
                 print("\nfull graph:")
                 print(_safe_json(parsed if parsed is not None else {"raw": text}))
+                continue
+
+            if line == "report":
+                res = await mem_sess.call_tool("read_graph", {})
+                text = _result_to_text(res)
+                parsed = _try_parse_json(text)
+                if not isinstance(parsed, dict):
+                    print("Could not read graph as JSON.")
+                    continue
+
+                scan_id = _pick_latest_scan_id(parsed)
+                if not scan_id:
+                    print("No scan nodes found in memory yet. Run: store (after scan + score).")
+                    continue
+
+                print("")
+                print(_render_report(parsed, scan_id=scan_id, max_secrets=5))
                 continue
 
             print("Unknown command. Type: help")
