@@ -384,7 +384,6 @@ async def score_findings(findings: List[Dict[str, Any]]) -> Dict[str, Any]:
     avg = total / max(1, len(scored))
     return {"max_score": max_score, "average_score": avg, "scored": scored}
 
-
 @mcp.tool()
 async def remediation_plan(scored_findings: List[Dict[str, Any]], top_n: int = 10) -> Dict[str, Any]:
     """
@@ -479,6 +478,110 @@ async def summarize_blast_radius(scored_findings: List[Dict[str, Any]], top_n: i
 
     notes = ["Impact is contextual. Treat this as a compass, not a courtroom."]
     return {"summary": out, "notes": notes}
+
+
+def _suggest_scope_cuts(kind: str) -> List[str]:
+    if kind == "aws_access_key_id":
+        return [
+            "Prefer a role with narrowly scoped IAM policy, not a long-lived access key.",
+            "Restrict to required services and actions only.",
+            "Add explicit resource ARNs where possible, avoid wildcard resources.",
+            "Enable key rotation and reduce key lifetime if supported.",
+        ]
+    if kind == "github_pat":
+        return [
+            "Replace PAT with GitHub App or fine-grained token where possible.",
+            "Limit repo access to the smallest set of repos required.",
+            "Prefer read-only permissions unless writes are required.",
+            "Scope tokens to a single automation purpose (CI, release, or bots), not all-in-one.",
+        ]
+    if kind == "google_api_key":
+        return [
+            "Restrict by HTTP referrer or IP address where applicable.",
+            "Limit enabled APIs to only what is needed.",
+            "Use separate keys per environment (dev, stage, prod).",
+            "Rotate keys and remove unused keys quickly.",
+        ]
+    if kind == "slack_token":
+        return [
+            "Reduce bot scopes to the minimum set of Slack permissions.",
+            "Avoid workspace-wide access unless it is essential.",
+            "Rotate the token and limit its distribution to a single runtime path.",
+        ]
+    if kind == "private_key_block":
+        return [
+            "Replace raw private keys with short-lived credentials where possible.",
+            "Restrict principals that can use the key material.",
+            "Rotate immediately and remove from repo history.",
+        ]
+    if kind == "jwt_like":
+        return [
+            "Reduce token lifetime and enforce audience and issuer checks.",
+            "Avoid storing bearer tokens in source or logs.",
+            "Rotate signing keys if compromise is suspected.",
+        ]
+    return [
+        "Scope down permissions to only what is needed.",
+        "Prefer short-lived credentials over long-lived secrets.",
+    ]
+
+
+@mcp.tool()
+async def propose_least_privilege_patch(scored_findings: List[Dict[str, Any]], rollout_window: str = "24h", max_items: int = 6) -> Dict[str, Any]:
+    """
+    Propose a least-privilege diff and rollout plan based on scored findings.
+
+    This does not apply any changes. It gives you a concise plan you can hand to a human.
+    """
+    if not scored_findings:
+        return {"plan": {}, "notes": ["no findings provided"]}
+
+    ordered = sorted(scored_findings, key=lambda x: int(x.get("risk_score", 0)), reverse=True)
+    top = ordered[:max_items]
+
+    diffs: List[Dict[str, Any]] = []
+    for f in top:
+        kind = f.get("kind", "unknown")
+        diffs.append(
+            {
+                "secret_fingerprint": f.get("secret_fingerprint", "unknown"),
+                "kind": kind,
+                "file": f.get("file", "unknown"),
+                "environment": f.get("environment", "unknown"),
+                "system": f.get("system", "unknown"),
+                "owner_email": f.get("owner_email") or "",
+                "risk_score": int(f.get("risk_score", 0)),
+                "scope_cuts": _suggest_scope_cuts(kind),
+            }
+        )
+
+    steps = [
+        "Inventory: confirm which findings are real credentials and still active.",
+        "Containment: rotate the highest-risk items first, starting with prod.",
+        "Least privilege: apply scope reductions and remove wildcard permissions.",
+        "Rollout: ship changes behind a small blast radius, then widen gradually.",
+        "Verify: confirm services still function and logs show expected access only.",
+        "Cleanup: delete unused credentials and close out owners and tickets.",
+    ]
+
+    rollback = [
+        "Keep previous credential valid for a short overlap window where possible.",
+        "If a service breaks, revert to the previous credential and re-scope with a smaller diff.",
+        "Log the incident and annotate the plan with what failed and why.",
+    ]
+
+    plan = {
+        "rollout_window": rollout_window,
+        "diffs": diffs,
+        "steps": steps,
+        "rollback": rollback,
+    }
+
+    notes = [
+        "This is a plan, not an enforcement engine. Use judgment before applying changes.",
+        "Small changes, clean logs, steady hands.",
+    ]
+    return {"plan": plan, "notes": notes}
 
 
 def _run_stdio() -> None:

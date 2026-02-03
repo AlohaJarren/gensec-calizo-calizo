@@ -51,6 +51,7 @@ class AgentState:
     last_scored: Optional[Dict[str, Any]] = None
     last_blast: Optional[Dict[str, Any]] = None
     last_plan: Optional[Dict[str, Any]] = None
+    last_patch: Optional[Dict[str, Any]] = None
 
 
 def _memory_docker_params(memory_dir: Path) -> StdioServerParameters:
@@ -98,14 +99,6 @@ def _relpath_or_raw(scanned_root: str, file_path: str) -> str:
 
 
 def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """
-    Convert scan/scored output into memory server entities and relations.
-
-    Entity shape:
-      { "name": str, "entityType": str, "observations": [str, ...] }
-    Relation shape:
-      { "from": str, "to": str, "relationType": str }
-    """
     entities: List[Dict[str, Any]] = []
     relations: List[Dict[str, Any]] = []
 
@@ -151,7 +144,6 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
         system = (f.get("system") or "unknown").strip()
         system_node = f"system:{system}"
 
-        # File entity
         entities.append(
             {
                 "name": file_node,
@@ -159,8 +151,6 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
                 "observations": [f"path={file_rel}"],
             }
         )
-
-        # Secret entity (no raw secret stored)
         entities.append(
             {
                 "name": secret_node,
@@ -176,7 +166,6 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
             }
         )
 
-        # Context entities
         entities.append(
             {
                 "name": env_node,
@@ -200,7 +189,6 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
                 }
             )
 
-        # Relations
         relations.append({"from": secret_node, "to": file_node, "relationType": "found_in"})
         relations.append({"from": file_node, "to": repo_name, "relationType": "belongs_to"})
         relations.append({"from": scan_name, "to": secret_node, "relationType": "reported"})
@@ -210,6 +198,56 @@ def _build_memory_payloads(scan: Dict[str, Any], scored: Dict[str, Any]) -> Tupl
 
         if owner_node:
             relations.append({"from": secret_node, "to": owner_node, "relationType": "owned_by"})
+
+    return entities, relations
+
+
+def _build_patch_payloads(scan: Dict[str, Any], scored: Dict[str, Any], patch: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    entities: List[Dict[str, Any]] = []
+    relations: List[Dict[str, Any]] = []
+
+    scan_id = scan.get("scan_id", "unknown_scan")
+    scan_name = f"scan:{scan_id}"
+    plan_name = f"plan:{scan_id}"
+
+    plan = patch.get("plan", {})
+    rollout_window = plan.get("rollout_window", "unknown")
+    diffs = plan.get("diffs", [])
+
+    entities.append(
+        {
+            "name": plan_name,
+            "entityType": "plan",
+            "observations": [
+                f"rollout_window={rollout_window}",
+                f"diff_count={len(diffs)}",
+            ],
+        }
+    )
+    relations.append({"from": plan_name, "to": scan_name, "relationType": "derived_from"})
+
+    # Link plan to top secrets it references.
+    for d in diffs:
+        fp = d.get("secret_fingerprint", "unknown_fp")
+        secret_node = f"secret:{fp[:12]}"
+        relations.append({"from": plan_name, "to": secret_node, "relationType": "covers"})
+
+    # Store a compact narrative so you can open the plan in memory.
+    steps = plan.get("steps", [])
+    rollback = plan.get("rollback", [])
+
+    entities.append(
+        {
+            "name": f"plantext:{scan_id}",
+            "entityType": "note",
+            "observations": [
+                "least_privilege_patch",
+                f"steps={'; '.join(steps)}",
+                f"rollback={'; '.join(rollback)}",
+            ],
+        }
+    )
+    relations.append({"from": f"plantext:{scan_id}", "to": plan_name, "relationType": "describes"})
 
     return entities, relations
 
@@ -234,13 +272,11 @@ async def run() -> None:
     nhi_params = _nhi_stdio_params()
 
     async with AsyncExitStack() as stack:
-        # Memory session
         mem_rw = await stack.enter_async_context(stdio_client(mem_params))
         mem_read, mem_write = mem_rw
         mem_sess = await stack.enter_async_context(ClientSession(mem_read, mem_write))
         await mem_sess.initialize()
 
-        # NHI session
         nhi_rw = await stack.enter_async_context(stdio_client(nhi_params))
         nhi_read, nhi_write = nhi_rw
         nhi_sess = await stack.enter_async_context(ClientSession(nhi_read, nhi_write))
@@ -265,7 +301,9 @@ async def run() -> None:
                     "  score                 - score last scan findings\n"
                     "  blast                 - summarize blast radius for last scored\n"
                     "  plan                  - remediation plan for last scored\n"
+                    "  patch                 - least-privilege diff and rollout plan\n"
                     "  store                 - store last scored findings into memory graph\n"
+                    "  storepatch            - store last patch plan into memory graph\n"
                     "  search <query>        - search memory graph\n"
                     "  open <name> [name..]  - open nodes by exact name\n"
                     "  graph                 - read entire memory graph\n"
@@ -329,6 +367,22 @@ async def run() -> None:
                 print(_safe_json(state.last_plan))
                 continue
 
+            if line == "patch":
+                if not state.last_scored or "scored" not in state.last_scored:
+                    print("No scored findings in state. Run: score")
+                    continue
+                res = await nhi_sess.call_tool(
+                    "propose_least_privilege_patch",
+                    {"scored_findings": state.last_scored["scored"], "rollout_window": "24h", "max_items": 6},
+                )
+                text = _result_to_text(res)
+                parsed = _try_parse_json(text)
+                state.last_patch = parsed if parsed is not None else {"raw": text}
+
+                print("\nleast-privilege patch:")
+                print(_safe_json(state.last_patch))
+                continue
+
             if line == "store":
                 if not state.last_scan or not state.last_scored:
                     print("Need scan + score first.")
@@ -339,6 +393,16 @@ async def run() -> None:
                 await mem_sess.call_tool("create_relations", {"relations": relations})
 
                 print(f"Stored: {len(entities)} entities, {len(relations)} relations")
+                continue
+
+            if line == "storepatch":
+                if not state.last_scan or not state.last_scored or not state.last_patch:
+                    print("Need scan + score + patch first.")
+                    continue
+                e2, r2 = _build_patch_payloads(state.last_scan, state.last_scored, state.last_patch)
+                await mem_sess.call_tool("create_entities", {"entities": e2})
+                await mem_sess.call_tool("create_relations", {"relations": r2})
+                print(f"Stored patch: {len(e2)} entities, {len(r2)} relations")
                 continue
 
             if line.startswith("search "):
