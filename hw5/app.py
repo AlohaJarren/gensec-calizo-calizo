@@ -46,7 +46,7 @@ def get_config() -> AppConfig:
     return AppConfig(
         persist_dir=get_repo_relative_path(".chromadb"),
         collection_name="hw2_rag",
-        embedding_model="models/embedding-001",
+        embedding_model="models/gemini-embedding-001",
     )
 
 
@@ -220,7 +220,7 @@ def get_llm():
         print(f"Import error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash").strip()
+    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
     return ChatGoogleGenerativeAI(model=model_name, temperature=0)
 
 
