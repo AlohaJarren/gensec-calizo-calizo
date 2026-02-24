@@ -11,6 +11,12 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
+# Ensure repo root is on sys.path when running "python hw7/app.py ..."
+_THIS_FILE = Path(__file__).resolve()
+_REPO_ROOT = _THIS_FILE.parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 
 def _run_cmd(args: List[str], timeout_s: int = 30, env: Optional[Dict[str, str]] = None) -> Tuple[int, str, str]:
     """Run a local command and return (returncode, stdout, stderr)."""
@@ -124,13 +130,11 @@ def get_package_changelog(package_name: str) -> Tuple[int, str, str]:
         if rc == 0 and out.strip():
             return rc, out, err
 
-        # If APT can't fetch changelog, try local docs.
         local = _read_local_changelog(package_name)
         if local:
             return 0, local, (err or "").strip()
         return rc, out, err
 
-    # No apt tooling available; try local docs only.
     local = _read_local_changelog(package_name)
     if local:
         return 0, local, ""
@@ -288,7 +292,7 @@ def build_report(target: str = "ssh") -> Dict[str, object]:
         remediation.append("# No candidate package detected - nothing to upgrade automatically")
 
     limitations = [
-        "This commit is deterministic-only (no LLM/agent yet).",
+        "Scan mode is deterministic-only (no LLM used).",
         "Package and service detection is heuristic (may miss non-standard SSH servers).",
         "Changelog parsing is best-effort and does not prove vulnerability presence or absence.",
         "No upgrades or restarts are executed (command plan only).",
@@ -312,24 +316,15 @@ def build_report(target: str = "ssh") -> Dict[str, object]:
 
 def run_mcp_server() -> None:
     """
-    Start MCP server exposing constrained inspection tools.
-
-    Official docs import FastMCP from: from mcp.server.fastmcp import FastMCP :contentReference[oaicite:3]{index=3}
-    If you installed with uv, run with: uv run python hw7/app.py mcp-server :contentReference[oaicite:4]{index=4}
+    Start MCP server exposing constrained inspection tools (stdio transport).
     """
     try:
         from mcp.server.fastmcp import FastMCP  # type: ignore
     except Exception:
         print("ERROR: Could not import MCP FastMCP.", file=sys.stderr)
-        print("You likely installed dependencies in uv, but are running the system python.", file=sys.stderr)
-        print("", file=sys.stderr)
-        print("Fix (recommended):", file=sys.stderr)
+        print("Fix: run with uv:", file=sys.stderr)
         print("  uv add \"mcp[cli]\"", file=sys.stderr)
         print("  uv run python hw7/app.py mcp-server", file=sys.stderr)
-        print("", file=sys.stderr)
-        print("Or activate your uv venv:", file=sys.stderr)
-        print("  source .venv/bin/activate", file=sys.stderr)
-        print("  python hw7/app.py mcp-server", file=sys.stderr)
         sys.exit(2)
 
     mcp = FastMCP("HW7 Package Advisor")
@@ -356,7 +351,7 @@ def run_mcp_server() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="HW7 Package Vulnerability Mini-Advisor (concise commit 1)")
+    parser = argparse.ArgumentParser(description="HW7 Package Vulnerability Mini-Advisor")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     scan = sub.add_parser("scan", help="Scan a target and write a report artifact")
@@ -366,10 +361,30 @@ def main() -> None:
 
     sub.add_parser("mcp-server", help="Run MCP server (stdio transport)")
 
+    agent = sub.add_parser("agent", help="Run Gemini-driven MCP agent and write artifacts")
+    agent.add_argument("question", nargs="+", help="Question to answer (wrap in quotes recommended)")
+    agent.add_argument("--out-dir", default="hw7/out", help="Output directory for artifacts")
+
     args = parser.parse_args()
 
     if args.cmd == "mcp-server":
         run_mcp_server()
+        return
+
+    if args.cmd == "agent":
+        question = " ".join(args.question).strip()
+
+        # Import agent client (works both as package import and local import).
+        try:
+            from hw7.agent_client import run_agent  # type: ignore
+        except ModuleNotFoundError:
+            from agent_client import run_agent  # type: ignore
+
+        answer, answer_md, trace_json = run_agent(user_question=question, out_dir=args.out_dir)
+        print("Agent answer written to:", answer_md)
+        print("Agent trace written to:", trace_json)
+        print("")
+        print(answer)
         return
 
     report = build_report(target=args.target)
