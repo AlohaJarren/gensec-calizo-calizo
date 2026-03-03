@@ -9,6 +9,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -364,7 +365,13 @@ def file_to_json(report: dict) -> dict:
     }
 
 
-def summary_json(target: Path, reports: list[dict], verdict: dict | None, model: str) -> dict:
+def summary_json(
+    target: Path,
+    reports: list[dict],
+    verdict: dict | None,
+    model: str,
+    collection: dict | None = None,
+) -> dict:
     """Build the full JSON output payload."""
     total_score = sum(r["score"] for r in reports)
     total_signals = sum(len(r["signals"]) for r in reports)
@@ -381,6 +388,8 @@ def summary_json(target: Path, reports: list[dict], verdict: dict | None, model:
     }
     if verdict is not None:
         payload["llm"] = {"model": model, "verdict": verdict}
+    if collection is not None:
+        payload["collection"] = collection
     return payload
 
 
@@ -517,6 +526,61 @@ def print_llm_verdict(verdict: dict, model: str) -> None:
             print(f"    - {item}")
 
 
+def collect_suspicious(
+    target: Path,
+    reports: list[dict],
+    verdict: dict | None,
+    model: str,
+    destination: str,
+) -> dict:
+    """Copy suspicious files into a review folder and write a manifest."""
+    dest = Path(destination).expanduser().resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+
+    copied_files = []
+    count = 1
+
+    for report in reports:
+        if report["score"] <= 0:
+            continue
+
+        source_path = report["path"]
+        dest_name = f"{count:03d}_{source_path.name}"
+        dest_path = dest / dest_name
+        shutil.copy2(source_path, dest_path)
+
+        copied_files.append(
+            {
+                "source": str(source_path),
+                "copied_to": str(dest_path),
+                "risk": label(report["score"]),
+                "score": report["score"],
+            }
+        )
+        count += 1
+
+    collection = {
+        "directory": str(dest),
+        "copied_count": len(copied_files),
+        "copied_files": copied_files,
+    }
+
+    manifest = summary_json(target, reports, verdict, model, collection)
+    manifest_path = dest / "triage_manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+
+    collection["manifest"] = str(manifest_path)
+    return collection
+
+
+def print_collection_summary(collection: dict) -> None:
+    """Print a short summary of collected suspicious files."""
+    print("\nCollection:")
+    print(f"  Directory: {collection['directory']}")
+    print(f"  Copied suspicious files: {collection['copied_count']}")
+    print(f"  Manifest: {collection['manifest']}")
+
+
 def main() -> int:
     """Run the CLI."""
     parser = argparse.ArgumentParser(description="Statically triage Python code for suspicious signals.")
@@ -524,6 +588,11 @@ def main() -> int:
     parser.add_argument("--show-clean", action="store_true", help="Show files with no signals.")
     parser.add_argument("--use-llm", action="store_true", help="Add a Gemini verdict on top of static findings.")
     parser.add_argument("--json", dest="json_output", action="store_true", help="Print machine-readable JSON output.")
+    parser.add_argument(
+        "--collect",
+        metavar="DIR",
+        help="Copy suspicious files into DIR and write a triage manifest.",
+    )
     parser.add_argument(
         "--model",
         default=os.getenv("GOOGLE_MODEL", "gemini-2.5-flash"),
@@ -539,6 +608,7 @@ def main() -> int:
 
     reports = [analyze(path) for path in files]
     verdict = None
+    collection = None
 
     if args.use_llm:
         try:
@@ -547,14 +617,24 @@ def main() -> int:
             print(f"\nGemini error: {exc}", file=sys.stderr)
             return 1
 
+    if args.collect:
+        try:
+            collection = collect_suspicious(target, reports, verdict, args.model, args.collect)
+        except Exception as exc:
+            print(f"\nCollection error: {exc}", file=sys.stderr)
+            return 1
+
     if args.json_output:
-        print(json.dumps(summary_json(target, reports, verdict, args.model), indent=2))
+        print(json.dumps(summary_json(target, reports, verdict, args.model, collection), indent=2))
         return 0
 
     print_report(target, reports, args.show_clean)
 
     if verdict is not None:
         print_llm_verdict(verdict, args.model)
+
+    if collection is not None:
+        print_collection_summary(collection)
 
     return 0
 
