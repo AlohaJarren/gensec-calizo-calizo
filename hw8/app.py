@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
-"""Statically triage a Python file or package for suspicious signals."""
+"""Statically triage Python code and optionally add a Gemini verdict."""
 
 from __future__ import annotations
 
 import argparse
 import ast
+import json
+import os
 import re
 import sys
 from pathlib import Path
+
+from google import genai
 
 URL_RE = re.compile(r"https?://[^\s'\"<>]+")
 HEX_RE = re.compile(r"(?:\\x[0-9a-fA-F]{2}){3,}")
@@ -209,7 +213,7 @@ def analyze(path: Path) -> dict:
 
 
 def print_report(target: Path, reports: list[dict], show_clean: bool) -> None:
-    """Print a concise triage summary."""
+    """Print a concise static triage summary."""
     total_score = sum(r["score"] for r in reports)
     total_signals = sum(len(r["signals"]) for r in reports)
 
@@ -257,11 +261,116 @@ def print_report(target: Path, reports: list[dict], show_clean: bool) -> None:
     print("\nLimitations: static-only analysis; this version does not execute or emulate code.")
 
 
+def build_llm_input(reports: list[dict]) -> str:
+    """Build a compact JSON summary for Gemini."""
+    payload = {
+        "files": [
+            {
+                "path": str(report["path"]),
+                "risk": label(report["score"]),
+                "urls": report["urls"],
+                "signals": [
+                    {
+                        "category": category,
+                        "severity": severity,
+                        "rule": rule,
+                        "reason": reason,
+                        "line": line_no,
+                        "evidence": evidence,
+                    }
+                    for category, severity, rule, reason, line_no, evidence in report["signals"]
+                ],
+            }
+            for report in reports
+        ]
+    }
+    return json.dumps(payload, indent=2)
+
+
+def parse_json_text(text: str) -> dict:
+    """Parse model output as JSON, tolerating fenced code blocks."""
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        parts = cleaned.split("```")
+        if len(parts) >= 3:
+            cleaned = parts[1]
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:]
+            cleaned = cleaned.strip()
+    return json.loads(cleaned)
+
+
+def gemini_verdict(reports: list[dict], model: str) -> dict:
+    """Ask Gemini for a concise JSON verdict over the static findings."""
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise RuntimeError("GOOGLE_API_KEY is not set.")
+
+    client = genai.Client(api_key=api_key)
+    prompt = (
+        "You are a security analyst.\n"
+        "Given the static triage findings below, return JSON with exactly these keys:\n"
+        "{\n"
+        '  "summary": "one short paragraph",\n'
+        '  "risk_level": "clean|low|medium|high",\n'
+        '  "likely_behaviors": ["short item"],\n'
+        '  "top_evidence": ["short item"],\n'
+        '  "limitations": ["short item"]\n'
+        "}\n\n"
+        "Do not add markdown fences.\n\n"
+        "Static findings:\n"
+        f"{build_llm_input(reports)}"
+    )
+
+    response = client.models.generate_content(model=model, contents=prompt)
+    text = (response.text or "").strip()
+
+    try:
+        return parse_json_text(text)
+    except Exception:
+        return {
+            "summary": text,
+            "risk_level": "unknown",
+            "likely_behaviors": [],
+            "top_evidence": [],
+            "limitations": ["The model did not return valid JSON."],
+        }
+
+
+def print_llm_verdict(verdict: dict, model: str) -> None:
+    """Print the Gemini verdict in a compact, readable format."""
+    print("\nGemini verdict:")
+    print(f"  Model: {model}")
+    print(f"  Risk level: {verdict.get('risk_level', 'unknown')}")
+    print(f"  Summary: {verdict.get('summary', '')}")
+
+    if verdict.get("likely_behaviors"):
+        print("  Likely behaviors:")
+        for item in verdict["likely_behaviors"]:
+            print(f"    - {item}")
+
+    if verdict.get("top_evidence"):
+        print("  Top evidence:")
+        for item in verdict["top_evidence"]:
+            print(f"    - {item}")
+
+    if verdict.get("limitations"):
+        print("  LLM limitations:")
+        for item in verdict["limitations"]:
+            print(f"    - {item}")
+
+
 def main() -> int:
     """Run the CLI."""
     parser = argparse.ArgumentParser(description="Statically triage Python code for suspicious signals.")
     parser.add_argument("target", help="Path to a .py file or a directory.")
     parser.add_argument("--show-clean", action="store_true", help="Show files with no signals.")
+    parser.add_argument("--use-llm", action="store_true", help="Add a Gemini verdict on top of static findings.")
+    parser.add_argument(
+        "--model",
+        default=os.getenv("GOOGLE_MODEL", "gemini-2.5-flash"),
+        help="Gemini model to use with --use-llm.",
+    )
     args = parser.parse_args()
 
     target = Path(args.target).expanduser().resolve()
@@ -270,7 +379,17 @@ def main() -> int:
         print(f"No Python files found at: {target}", file=sys.stderr)
         return 1
 
-    print_report(target, [analyze(path) for path in files], args.show_clean)
+    reports = [analyze(path) for path in files]
+    print_report(target, reports, args.show_clean)
+
+    if args.use_llm:
+        try:
+            verdict = gemini_verdict(reports, args.model)
+            print_llm_verdict(verdict, args.model)
+        except Exception as exc:
+            print(f"\nGemini error: {exc}", file=sys.stderr)
+            return 1
+
     return 0
 
 

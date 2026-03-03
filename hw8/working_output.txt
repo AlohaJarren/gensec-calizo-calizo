@@ -1,0 +1,34 @@
+# Working output for 2nd push 2/28/26
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p3.py --use-llm
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p3.py
+Files scanned: 1
+Total signals: 1
+Overall risk: LOW (score=1)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p3.py
+  Risk: LOW (score=1)
+  Imports: json, locale, platform, psutil, socket, time
+  Signals:
+    - [LOW] obfuscation_or_decode via base64-like-string (line 67)
+      Reason: Contains a long Base64-like token.
+      Evidence: 'preferred_encoding': locale.getpreferredencoding(),
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+Gemini verdict:
+  Model: gemini-2.5-flash
+  Risk level: low
+  Summary: Analysis of `p3.py` revealed a low-risk signal for a Base64-like string. This appears to be a false positive, as the evidence points to a benign use of `locale.getpreferredencoding()` for legitimate locale encoding rather than malicious obfuscation.
+  Likely behaviors:
+    - Uses encoding/decoding functions
+  Top evidence:
+    - Base64-like string found in `'preferred_encoding': locale.getpreferredencoding()`
+  LLM limitations:
+    - Static analysis cannot confirm dynamic behavior or runtime obfuscation.
+    - Heuristic for Base64-like strings can generate false positives for legitimate code related to encoding.
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$
