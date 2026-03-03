@@ -29,11 +29,15 @@ RULES = {
     "requests.put": ("network_access", "medium", "Makes an outbound HTTP PUT request."),
     "requests.delete": ("network_access", "medium", "Makes an outbound HTTP DELETE request."),
     "urllib.request.urlopen": ("network_access", "medium", "Opens a remote URL."),
+    "socket.socket": ("network_access", "medium", "Creates a raw socket."),
+    "socket.create_connection": ("network_access", "high", "Creates an outbound socket connection."),
     "subprocess.run": ("process_launch", "high", "Launches a child process."),
     "subprocess.Popen": ("process_launch", "high", "Launches a child process."),
     "subprocess.call": ("process_launch", "high", "Launches a child process."),
     "subprocess.check_call": ("process_launch", "high", "Launches a child process."),
     "subprocess.check_output": ("process_launch", "high", "Launches a child process."),
+    "threading.Thread": ("process_spawn", "medium", "Creates a thread."),
+    "multiprocessing.Process": ("process_spawn", "medium", "Creates a process."),
     "os.system": ("process_launch", "high", "Executes a shell command."),
     "os.popen": ("process_launch", "high", "Executes a shell command."),
     "os.getenv": ("environment_access", "medium", "Reads an environment variable."),
@@ -172,6 +176,15 @@ class Analyzer(ast.NodeVisitor):
         if name in RULES:
             category, severity, reason = RULES[name]
             self.add(category, severity, name, reason, getattr(node, "lineno", None))
+
+        if name and name.endswith(".connect"):
+            self.add(
+                "network_access",
+                "high",
+                name,
+                "Attempts an outbound connection.",
+                getattr(node, "lineno", None),
+            )
 
         if name == "open":
             mode = open_mode(node)
@@ -319,6 +332,58 @@ def analyze(path: Path) -> dict:
     return report
 
 
+def file_to_json(report: dict) -> dict:
+    """Convert one internal file report into JSON-safe data."""
+    return {
+        "path": str(report["path"]),
+        "risk": label(report["score"]),
+        "score": report["score"],
+        "imports": report["imports"],
+        "urls": report["urls"],
+        "decoded": [
+            {
+                "kind": kind,
+                "line": line_no,
+                "source_preview": original,
+                "decoded_preview": decoded,
+            }
+            for kind, line_no, original, decoded in report["decoded"]
+        ],
+        "signals": [
+            {
+                "category": category,
+                "severity": severity,
+                "rule": rule,
+                "reason": reason,
+                "line": line_no,
+                "evidence": evidence,
+            }
+            for category, severity, rule, reason, line_no, evidence in report["signals"]
+        ],
+        "syntax_error": report["syntax_error"],
+    }
+
+
+def summary_json(target: Path, reports: list[dict], verdict: dict | None, model: str) -> dict:
+    """Build the full JSON output payload."""
+    total_score = sum(r["score"] for r in reports)
+    total_signals = sum(len(r["signals"]) for r in reports)
+    payload = {
+        "target": str(target),
+        "files_scanned": len(reports),
+        "total_signals": total_signals,
+        "overall_risk": label(total_score),
+        "limitations": [
+            "Static-only analysis.",
+            "This tool does not execute or emulate code.",
+        ],
+        "files": [file_to_json(report) for report in reports],
+    }
+    if verdict is not None:
+        payload["llm"] = {"model": model, "verdict": verdict}
+    return payload
+
+
 def print_report(target: Path, reports: list[dict], show_clean: bool) -> None:
     """Print a concise static triage summary."""
     total_score = sum(r["score"] for r in reports)
@@ -376,37 +441,7 @@ def print_report(target: Path, reports: list[dict], show_clean: bool) -> None:
 
 def build_llm_input(reports: list[dict]) -> str:
     """Build a compact JSON summary for Gemini."""
-    payload = {
-        "files": [
-            {
-                "path": str(report["path"]),
-                "risk": label(report["score"]),
-                "urls": report["urls"],
-                "signals": [
-                    {
-                        "category": category,
-                        "severity": severity,
-                        "rule": rule,
-                        "reason": reason,
-                        "line": line_no,
-                        "evidence": evidence,
-                    }
-                    for category, severity, rule, reason, line_no, evidence in report["signals"]
-                ],
-                "decoded": [
-                    {
-                        "kind": kind,
-                        "line": line_no,
-                        "source_preview": original,
-                        "decoded_preview": decoded,
-                    }
-                    for kind, line_no, original, decoded in report["decoded"]
-                ],
-            }
-            for report in reports
-        ]
-    }
-    return json.dumps(payload, indent=2)
+    return json.dumps({"files": [file_to_json(report) for report in reports]}, indent=2)
 
 
 def parse_json_text(text: str) -> dict:
@@ -488,6 +523,7 @@ def main() -> int:
     parser.add_argument("target", help="Path to a .py file or a directory.")
     parser.add_argument("--show-clean", action="store_true", help="Show files with no signals.")
     parser.add_argument("--use-llm", action="store_true", help="Add a Gemini verdict on top of static findings.")
+    parser.add_argument("--json", dest="json_output", action="store_true", help="Print machine-readable JSON output.")
     parser.add_argument(
         "--model",
         default=os.getenv("GOOGLE_MODEL", "gemini-2.5-flash"),
@@ -502,15 +538,23 @@ def main() -> int:
         return 1
 
     reports = [analyze(path) for path in files]
-    print_report(target, reports, args.show_clean)
+    verdict = None
 
     if args.use_llm:
         try:
             verdict = gemini_verdict(reports, args.model)
-            print_llm_verdict(verdict, args.model)
         except Exception as exc:
             print(f"\nGemini error: {exc}", file=sys.stderr)
             return 1
+
+    if args.json_output:
+        print(json.dumps(summary_json(target, reports, verdict, args.model), indent=2))
+        return 0
+
+    print_report(target, reports, args.show_clean)
+
+    if verdict is not None:
+        print_llm_verdict(verdict, args.model)
 
     return 0
 
