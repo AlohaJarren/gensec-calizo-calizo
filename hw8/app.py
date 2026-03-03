@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import base64
 import json
 import os
 import re
@@ -14,8 +15,7 @@ from pathlib import Path
 from google import genai
 
 URL_RE = re.compile(r"https?://[^\s'\"<>]+")
-HEX_RE = re.compile(r"(?:\\x[0-9a-fA-F]{2}){3,}")
-B64_RE = re.compile(r"\b[A-Za-z0-9+/]{16,}={0,2}\b")
+HEX_STRING_RE = re.compile(r"""(['"])((?:\\x[0-9a-fA-F]{2}){3,})\1""")
 CHR_RE = re.compile(r"(?:chr\(\d+\)\s*\+\s*){2,}chr\(\d+\)")
 
 WEIGHTS = {"low": 1, "medium": 2, "high": 3}
@@ -65,14 +65,67 @@ def open_mode(node: ast.Call) -> str | None:
     return None
 
 
+def preview(text: str, limit: int = 80) -> str:
+    """Return a compact one-line preview string."""
+    one_line = text.replace("\n", "\\n")
+    return one_line if len(one_line) <= limit else one_line[: limit - 3] + "..."
+
+
+def mostly_printable(text: str) -> bool:
+    """Return True if text is mostly printable ASCII-like content."""
+    if not text:
+        return False
+    printable = sum(1 for ch in text if ch.isprintable() or ch in "\r\n\t")
+    return printable / len(text) >= 0.85
+
+
+def try_decode_base64(value: str) -> str | None:
+    """Try to decode a Base64-like string literal into printable text."""
+    if len(value) < 16:
+        return None
+    if not re.fullmatch(r"[A-Za-z0-9+/=]+", value):
+        return None
+
+    padded = value + "=" * (-len(value) % 4)
+    try:
+        decoded = base64.b64decode(padded, validate=True)
+    except Exception:
+        return None
+
+    if not decoded:
+        return None
+
+    for encoding in ("utf-8", "latin-1"):
+        try:
+            text = decoded.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+        if mostly_printable(text):
+            return text.strip()
+    return None
+
+
+def add_signal(report: dict, signal: tuple[str, str, str, str, int, str]) -> None:
+    """Add a signal if it is not already present."""
+    if signal not in report["signals"]:
+        report["signals"].append(signal)
+
+
+def add_decoded(report: dict, item: tuple[str, int, str, str]) -> None:
+    """Add a decoded preview if it is not already present."""
+    if item not in report["decoded"]:
+        report["decoded"].append(item)
+
+
 class Analyzer(ast.NodeVisitor):
-    """Collect suspicious signals from Python source."""
+    """Collect suspicious signals and string literals from Python source."""
 
     def __init__(self, text: str) -> None:
         self.lines = text.splitlines()
         self.imports: set[str] = set()
         self.urls = sorted(set(URL_RE.findall(text)))
         self.signals: list[tuple[str, str, str, str, int, str]] = []
+        self.string_literals: list[tuple[int, str]] = []
 
     def add(self, category: str, severity: str, rule: str, reason: str, line: int | None) -> None:
         """Add one signal if it is not already present."""
@@ -81,6 +134,12 @@ class Analyzer(ast.NodeVisitor):
         item = (category, severity, rule, reason, line_no, evidence)
         if item not in self.signals:
             self.signals.append(item)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        """Collect string literals for later deobfuscation attempts."""
+        if isinstance(node.value, str):
+            self.string_literals.append((getattr(node, "lineno", 0) or 0, node.value))
+        self.generic_visit(node)
 
     def visit_Import(self, node: ast.Import) -> None:
         """Collect imported modules."""
@@ -168,23 +227,63 @@ def label(score: int) -> str:
     return "high"
 
 
-def add_regex_signals(text: str, report: dict) -> None:
-    """Add simple regex-based obfuscation hints."""
-    lines = text.splitlines()
+def add_local_deobfuscation(text: str, analyzer: Analyzer, report: dict) -> None:
+    """Try simple deobfuscation patterns and store decoded previews."""
+    for line_no, literal in analyzer.string_literals:
+        decoded = try_decode_base64(literal)
+        if decoded:
+            add_decoded(report, ("base64", line_no, preview(literal), preview(decoded)))
+            add_signal(
+                report,
+                (
+                    "obfuscation_or_decode",
+                    "medium",
+                    "decoded-base64",
+                    "Decoded a Base64 string literal.",
+                    line_no,
+                    preview(literal),
+                ),
+            )
 
-    def add(pattern: re.Pattern[str], rule: str, severity: str, reason: str) -> None:
-        match = pattern.search(text)
-        if not match:
-            return
+    for match in HEX_STRING_RE.finditer(text):
         line_no = text[: match.start()].count("\n") + 1
-        evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else ""
-        item = ("obfuscation_or_decode", severity, rule, reason, line_no, evidence)
-        if item not in report["signals"]:
-            report["signals"].append(item)
+        try:
+            decoded = ast.literal_eval(match.group(0))
+        except Exception:
+            continue
+        if isinstance(decoded, str) and mostly_printable(decoded):
+            add_decoded(report, ("hex-escapes", line_no, preview(match.group(0)), preview(decoded)))
+            add_signal(
+                report,
+                (
+                    "obfuscation_or_decode",
+                    "medium",
+                    "decoded-hex-escapes",
+                    "Decoded a quoted hex-escape string.",
+                    line_no,
+                    preview(match.group(0)),
+                ),
+            )
 
-    add(HEX_RE, "hex-escape-pattern", "medium", "Contains repeated hex escape sequences.")
-    add(B64_RE, "base64-like-string", "low", "Contains a long Base64-like token.")
-    add(CHR_RE, "chr-chain", "medium", "Builds a string from many chr(...) calls.")
+    for match in CHR_RE.finditer(text):
+        line_no = text[: match.start()].count("\n") + 1
+        nums = [int(value) for value in re.findall(r"chr\((\d+)\)", match.group(0))]
+        if not nums:
+            continue
+        decoded = "".join(chr(n) for n in nums)
+        if mostly_printable(decoded):
+            add_decoded(report, ("chr-chain", line_no, preview(match.group(0)), preview(decoded)))
+            add_signal(
+                report,
+                (
+                    "obfuscation_or_decode",
+                    "medium",
+                    "decoded-chr-chain",
+                    "Reconstructed a chr(...) string-building chain.",
+                    line_no,
+                    preview(match.group(0)),
+                ),
+            )
 
 
 def analyze(path: Path) -> dict:
@@ -194,7 +293,14 @@ def analyze(path: Path) -> dict:
     except UnicodeDecodeError:
         text = path.read_text(encoding="utf-8", errors="replace")
 
-    report = {"path": path, "imports": [], "urls": [], "signals": [], "syntax_error": None}
+    report = {
+        "path": path,
+        "imports": [],
+        "urls": [],
+        "signals": [],
+        "decoded": [],
+        "syntax_error": None,
+    }
 
     try:
         tree = ast.parse(text, filename=str(path))
@@ -203,11 +309,12 @@ def analyze(path: Path) -> dict:
         report["imports"] = sorted(analyzer.imports)
         report["urls"] = analyzer.urls
         report["signals"] = analyzer.signals
+        add_local_deobfuscation(text, analyzer, report)
     except SyntaxError as exc:
         report["syntax_error"] = f"{exc.msg} (line {exc.lineno})"
 
-    add_regex_signals(text, report)
     report["signals"].sort(key=lambda s: (s[4], s[0], s[2]))
+    report["decoded"].sort(key=lambda d: (d[1], d[0]))
     report["score"] = sum(WEIGHTS[s[1]] for s in report["signals"])
     return report
 
@@ -246,6 +353,12 @@ def print_report(target: Path, reports: list[dict], show_clean: bool) -> None:
             for url in report["urls"]:
                 print(f"    - {url}")
 
+        if report["decoded"]:
+            print("  Decoded previews:")
+            for kind, line_no, original, decoded in report["decoded"]:
+                print(f"    - [{kind}] line {line_no}: {decoded}")
+                print(f"      Source: {original}")
+
         if not report["signals"]:
             print("  Signals: none")
             continue
@@ -279,6 +392,15 @@ def build_llm_input(reports: list[dict]) -> str:
                         "evidence": evidence,
                     }
                     for category, severity, rule, reason, line_no, evidence in report["signals"]
+                ],
+                "decoded": [
+                    {
+                        "kind": kind,
+                        "line": line_no,
+                        "source_preview": original,
+                        "decoded_preview": decoded,
+                    }
+                    for kind, line_no, original, decoded in report["decoded"]
                 ],
             }
             for report in reports

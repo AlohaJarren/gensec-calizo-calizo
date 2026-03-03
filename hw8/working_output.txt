@@ -32,3 +32,90 @@ Gemini verdict:
 
 ┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
 └─$
+
+# Working output for 1st push 3/1/26
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p6.py
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+Files scanned: 1
+Total signals: 5
+Overall risk: HIGH (score=11)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+  Risk: HIGH (score=11)
+  Imports: base64, ctypes, multiprocessing, os, platform, requests, socket, subprocess, threading, time
+  URLs:
+    - https://1.2.3.4:5678/
+  Signals:
+    - [MEDIUM] file_write via open-write (line 49)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(file_path, "wb") as f:
+    - [MEDIUM] file_write via open-write (line 149)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/data.bak", "wb") as f:
+    - [HIGH] dynamic_execution via exec (line 170)
+      Reason: Uses exec.
+      Evidence: exec(module_content)
+    - [MEDIUM] file_write via open-write (line 183)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+    - [MEDIUM] file_write via open-write (line 206)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$ python hw8/app.py ./../cs475-src/08_Summarization_ReverseEng/src/p6.py --use-llm
+Target: /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+Files scanned: 1
+Total signals: 5
+Overall risk: HIGH (score=11)
+
+Per-file findings:
+
+- /home/calizo/cs475-src/08_Summarization_ReverseEng/src/p6.py
+  Risk: HIGH (score=11)
+  Imports: base64, ctypes, multiprocessing, os, platform, requests, socket, subprocess, threading, time
+  URLs:
+    - https://1.2.3.4:5678/
+  Signals:
+    - [MEDIUM] file_write via open-write (line 49)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open(file_path, "wb") as f:
+    - [MEDIUM] file_write via open-write (line 149)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/data.bak", "wb") as f:
+    - [HIGH] dynamic_execution via exec (line 170)
+      Reason: Uses exec.
+      Evidence: exec(module_content)
+    - [MEDIUM] file_write via open-write (line 183)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+    - [MEDIUM] file_write via open-write (line 206)
+      Reason: Opens a file in write-capable mode (wb).
+      Evidence: with open("/tmp/save_dat01", "wb") as f:
+
+Limitations: static-only analysis; this version does not execute or emulate code.
+
+Gemini verdict:
+  Model: gemini-2.5-flash
+  Risk level: high
+  Summary: The Python script `p6.py` exhibits multiple high-risk behaviors, including dynamic code execution via `exec` and several file write operations, some to temporary directories. It also attempts to establish an HTTPS connection to an external IP address.
+  Likely behaviors:
+    - Execute arbitrary code dynamically.
+    - Write data to local files, potentially for persistence or data staging.
+    - Communicate with a remote server for command and control or data exfiltration.
+  Top evidence:
+    - Uses `exec(module_content)` for dynamic code execution (line 170).
+    - Opens `/tmp/data.bak` and `/tmp/save_dat01` in write-binary mode.
+    - Attempts to connect to `https://1.2.3.4:5678/`.
+  LLM limitations:
+    - Static analysis cannot determine the source or content of `module_content` passed to `exec`.
+    - The actual data written to files cannot be determined without dynamic analysis.
+    - The purpose and success of the network connection to `1.2.3.4` are unknown.
+
+┌──(.venv)(calizo㉿kali-vm)-[~/gensec-calizo-calizo]
+└─$
