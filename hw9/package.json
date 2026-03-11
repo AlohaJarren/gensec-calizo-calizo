@@ -1,0 +1,11 @@
+{
+  "name": "hw9-promptfoo-demo",
+  "private": true,
+  "devDependencies": {
+    "promptfoo": "0.121.1"
+  },
+  "scripts": {
+    "redteam:run": "promptfoo redteam run",
+    "redteam:report": "promptfoo redteam report"
+  }
+}

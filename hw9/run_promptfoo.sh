@@ -8,16 +8,22 @@ if ! command -v node >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -x "./node_modules/.bin/promptfoo" ]]; then
+  PROMPTFOO="./node_modules/.bin/promptfoo"
+else
+  PROMPTFOO="npx promptfoo@latest"
+fi
+
 case "$MODE" in
   run)
-    npx promptfoo@latest redteam run
+    eval "$PROMPTFOO redteam run"
     ;;
   report)
-    npx promptfoo@latest redteam report
+    eval "$PROMPTFOO redteam report"
     ;;
   both)
-    npx promptfoo@latest redteam run
-    npx promptfoo@latest redteam report
+    eval "$PROMPTFOO redteam run"
+    eval "$PROMPTFOO redteam report"
     ;;
   *)
     echo "Usage: ./run_promptfoo.sh [run|report|both]"

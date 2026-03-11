@@ -88,6 +88,38 @@ source .venv/bin/activate
 - artifacts/manual_probe.json
 - artifacts/app.log
 
-## Project Direction (Small Project)
+---
+
+# Commit 4 - pinned Promptfoo version and final demo runner
+
+This commit makes the final workflow more stable and easier to demonstrate.
+
+I pinned Promptfoo in package.json so the project has a known local version. Then I updated run_promptfoo.sh so it prefers the local install when it exists.
+
+I also added final_redteam.sh. This script starts the Flask app, waits for the endpoint to come up, runs the Promptfoo red-team scan, saves the logs, and can open the report at the end.
+
+## One-time Node setup
+
+cd hw9
+npm install
+
+## Final scan only
+
+cd hw9
+source .venv/bin/activate
+./final_redteam.sh run
+
+## Final scan and report
+
+cd hw9
+source .venv/bin/activate
+./final_redteam.sh both
+
+## Saved files
+
+- artifacts/app_final.log
+- artifacts/promptfoo_redteam.log
+
+# Project Direction (Small Project)
 
 First, I create a vulnerable LLM application. Then, I use Promptfoo to test it in a repeatable way. That gives me a focused demo, a clean commit history, and a project that reflects what we have been learning in CS 575 about LLM security, evaluation, and exploitation workflows.
