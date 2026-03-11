@@ -58,11 +58,36 @@ The app from Commit 1 is specifically vulnerable to direct prompt injection and 
 cd hw9
 ./run_promptfoo.sh both
 
-# Open the report only
+## Open the report only
 
 cd hw9
 ./run_promptfoo.sh report
 
-# Project Direction (Small Project)
+---
+
+# Commit 3 - local smoke test and evidence logging
+
+This commit adds a short local workflow for quick validation.
+
+I do not want to wait for a full Promptfoo scan every time I make a small change. Because of that, this commit adds one small probe script and one runner script.
+
+demo_run.sh starts the Flask app, waits for the local endpoint to respond, runs one prompt-injection probe, saves the model output, and then shuts the app down.
+
+demo_probe.py sends the probe request and writes the response to artifacts/manual_probe.json.
+
+This gives me a fast baseline before the final red-team run.
+
+## Run the smoke test
+
+cd hw9
+source .venv/bin/activate
+./demo_run.sh
+
+## Saved files
+
+- artifacts/manual_probe.json
+- artifacts/app.log
+
+## Project Direction (Small Project)
 
 First, I create a vulnerable LLM application. Then, I use Promptfoo to test it in a repeatable way. That gives me a focused demo, a clean commit history, and a project that reflects what we have been learning in CS 575 about LLM security, evaluation, and exploitation workflows.
