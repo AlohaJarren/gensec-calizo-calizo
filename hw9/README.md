@@ -1,18 +1,68 @@
-# HW9 Commit 1 - vulnerable Promptfoo target
+# HW9 - Promptfoo Vulnerable Target and Red-Team Setup
 
-This commit adds a small local Flask app that Promptfoo will attack in later commits.
+This homework builds a small local LLM application and then tests it with Promptfoo.
 
-## Why it is vulnerable
+The goal is simple. I want to show a clean example of how an LLM application can become vulnerable when user-controlled text is placed in a high-trust instruction context. Then I want to show how Promptfoo can find that weakness in a structured way.
 
-The app incorrectly pastes attacker-controlled text into the model's system instruction block instead of treating it as normal user input.
+## Commit 1 - vulnerable local target
 
-## Setup
+This commit adds a small Flask application.
 
-```bash
+The app exposes one local endpoint at `/chat`. It accepts a prompt and returns a model response.
+
+The vulnerability is intentional. The application places attacker-controlled text inside the model's system instruction block instead of treating it like normal user input. That design choice creates a clear prompt-injection target for later testing.
+
+### Setup
+
 cd hw9
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 python app.py
-```
+
+---
+
+# Commit 2 - Promptfoo config and runner
+
+Commit 2 - Promptfoo config and runner
+
+This commit adds the Promptfoo configuration and the runner script.
+
+The configuration points Promptfoo to the local Flask target. The scan stays narrow on purpose. I want it to be easy to explain, easy to reproduce, and strong enough to show the core weakness clearly.
+
+This red-team setup focuses on prompt extraction, system prompt override, and a custom policy check. The policy is straightforward: the model must not reveal internal notes, hidden prompts, or internal tokens.
+
+## What changed
+
+- `promptfooconfig.yaml` connects Promptfoo to the local /chat endpoint
+- `run_promptfoo.sh` runs the red-team workflow and report
+- the scan is scoped to a small set of checks that match the weakness in Commit 1
+
+## Why these checks
+
+The app from Commit 1 is specifically vulnerable to direct prompt injection and prompt leakage, so this config focuses on:
+
+- `prompt-extraction`
+- `system-prompt-override`
+- a custom `policy` that says the app must not reveal internal notes or tokens
+
+## Prerequisites
+
+- The Flask app from Commit 1 should be running locally.
+- Node.js 20 or newer should be installed.
+- `ANTHROPIC_API_KEY` is exported or present in your shell environment
+
+## Run
+
+cd hw9
+./run_promptfoo.sh both
+
+# Open the report only
+
+cd hw9
+./run_promptfoo.sh report
+
+# Project Direction (Small Project)
+
+First, I create a vulnerable LLM application. Then, I use Promptfoo to test it in a repeatable way. That gives me a focused demo, a clean commit history, and a project that reflects what we have been learning in CS 575 about LLM security, evaluation, and exploitation workflows.
