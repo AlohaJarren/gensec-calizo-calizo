@@ -1,0 +1,3 @@
+langchain-anthropic
+langchain-community
+langchain-core
