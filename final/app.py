@@ -2,12 +2,11 @@
 """
 NanoClaw-inspired Defensive Social Engineering Autoresponder
 
-Commit 1 scope:
-- Working CLI
-- Per-session memory
-- Safe decoy persona
-- Session management commands
-- Anthropic Claude model integration
+Commit 2 scope:
+- Keep the working CLI and session memory from commit 1
+- Add scam classification
+- Add conversation stage detection
+- Print structured analysis before each decoy reply
 
 Environment:
 - ANTHROPIC_API_KEY must be set
@@ -18,8 +17,9 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Dict, List
+from typing import Dict, List, Literal
 
+from pydantic import BaseModel, Field
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.chat_history import BaseChatMessageHistory
@@ -31,11 +31,43 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 
 DEFAULT_SESSION_ID = "scammer_demo"
 MAX_HISTORY_MESSAGES = 10
+MAX_CLASSIFIER_HISTORY = 6
 
 
-# In-memory session store for this first commit.
-# Later commits can replace this with file logging or persistence.
 store: Dict[str, ChatMessageHistory] = {}
+
+
+class ScamAnalysis(BaseModel):
+    """Structured scam analysis for one inbound message."""
+
+    family: Literal[
+        "investment_scam",
+        "pig_butchering",
+        "phishing",
+        "recruiter_scam",
+        "tech_support_scam",
+        "credential_harvest",
+        "unknown",
+    ] = Field(description="Best-fit scam family label.")
+
+    risk: Literal["low", "medium", "high"] = Field(
+        description="Overall risk level for the latest inbound message."
+    )
+
+    stage: Literal[
+        "opening_contact",
+        "rapport_building",
+        "credibility_building",
+        "information_gathering",
+        "financial_or_credential_push",
+        "persistence_or_reengagement",
+        "post_compromise_or_cleanup",
+        "unknown",
+    ] = Field(description="Most likely current conversation stage.")
+
+    reasons: List[str] = Field(
+        description="Short reasons that justify the family, risk, and stage labels."
+    )
 
 
 def require_environment() -> None:
@@ -103,7 +135,7 @@ def role_name(message: BaseMessage) -> str:
 
 
 def build_system_prompt() -> str:
-    """Return the decoy persona and safety instructions."""
+    """Return the decoy persona and current behavioral instructions."""
     persona = """
 You are a fictional defensive decoy persona used for a university security lab.
 
@@ -147,7 +179,7 @@ Behavior rules:
 
 
 def build_chain() -> RunnableWithMessageHistory:
-    """Create the chat chain with prompt, truncation, and message history."""
+    """Create the main chat chain with prompt, truncation, and message history."""
     llm = ChatAnthropic(
         model=get_model_name(),
         temperature=0.2,
@@ -174,6 +206,116 @@ def build_chain() -> RunnableWithMessageHistory:
     )
 
 
+def build_classifier():
+    """Create a structured-output classifier for scam family, risk, and stage."""
+    llm = ChatAnthropic(
+        model=get_model_name(),
+        temperature=0,
+        max_retries=2,
+    ).with_structured_output(ScamAnalysis)
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+You are a defensive security analyst for a social-engineering lab.
+
+Classify the latest inbound message in the context of the recent conversation.
+Return only the structured fields required by the schema.
+
+Use these family labels:
+- investment_scam
+- pig_butchering
+- phishing
+- recruiter_scam
+- tech_support_scam
+- credential_harvest
+- unknown
+
+Use these stage labels:
+- opening_contact
+- rapport_building
+- credibility_building
+- information_gathering
+- financial_or_credential_push
+- persistence_or_reengagement
+- post_compromise_or_cleanup
+- unknown
+
+Guidance:
+- "investment_scam" fits fake brokers, guaranteed returns, account setup pressure, and suspicious portfolio control.
+- "pig_butchering" fits relationship-building plus eventual investment or crypto grooming.
+- "phishing" fits lure messages trying to get a click, open, reply, or trust transfer.
+- "recruiter_scam" fits fake job outreach and hiring bait.
+- "tech_support_scam" fits device compromise claims, fake support staff, or urgent repair/payment instructions.
+- "credential_harvest" fits direct requests for SSNs, passwords, OTPs, or identity data.
+
+Risk:
+- low: little evidence of scam pressure
+- medium: suspicious but not yet directly requesting sensitive or financial actions
+- high: direct request for money, credentials, identity data, or account control
+
+Reasons:
+- keep them short
+- focus on concrete signals from the message and recent history
+""".strip(),
+            ),
+            (
+                "human",
+                "Recent conversation:\n{history_text}\n\nLatest inbound message:\n{current_message}",
+            ),
+        ]
+    )
+
+    return prompt | llm
+
+
+def format_recent_history_for_classifier(session_id: str, limit: int = MAX_CLASSIFIER_HISTORY) -> str:
+    """Format recent session history into compact plain text for classification."""
+    history = get_session_history(session_id)
+    messages = history.messages[-limit:]
+
+    if not messages:
+        return "(no prior history)"
+
+    lines: List[str] = []
+    for msg in messages:
+        lines.append(f"{role_name(msg)}: {message_content_to_text(msg.content)}")
+    return "\n".join(lines)
+
+
+def analyze_message(classifier, session_id: str, current_message: str) -> ScamAnalysis:
+    """Run structured scam analysis for the latest inbound message."""
+    history_text = format_recent_history_for_classifier(session_id)
+
+    try:
+        return classifier.invoke(
+            {
+                "history_text": history_text,
+                "current_message": current_message,
+            }
+        )
+    except Exception:
+        return ScamAnalysis(
+            family="unknown",
+            risk="medium",
+            stage="unknown",
+            reasons=["Classifier failed; using fallback analysis."],
+        )
+
+
+def print_analysis(analysis: ScamAnalysis) -> None:
+    """Print a small structured analysis block before the decoy reply."""
+    print("[analysis]")
+    print(f"  family: {analysis.family}")
+    print(f"  risk:   {analysis.risk}")
+    print(f"  stage:  {analysis.stage}")
+    print("  reasons:")
+    for reason in analysis.reasons:
+        print(f"    - {reason}")
+
+
 def print_banner() -> None:
     """Print a small startup banner."""
     print("=" * 72)
@@ -188,7 +330,7 @@ def print_banner() -> None:
     print("  /clear               Clear current session history")
     print("  /quit                Exit")
     print("-" * 72)
-    print("Type a suspected scammer message and the decoy will respond.")
+    print("Each inbound message is analyzed, then answered by the decoy.")
     print("-" * 72)
 
 
@@ -279,9 +421,9 @@ def main() -> None:
     """Run the interactive CLI."""
     require_environment()
     chain_with_history = build_chain()
+    classifier = build_classifier()
     current_session = DEFAULT_SESSION_ID
 
-    # Create the default session immediately so it appears in /sessions.
     get_session_history(current_session)
 
     print_banner()
@@ -301,6 +443,9 @@ def main() -> None:
         if user_input.startswith("/"):
             current_session = process_command(user_input, current_session)
             continue
+
+        analysis = analyze_message(classifier, current_session, user_input)
+        print_analysis(analysis)
 
         config = {"configurable": {"session_id": current_session}}
 
