@@ -1,0 +1,174 @@
+┌──(calizo㉿kali-vm-2)-[~/gensec-calizo-calizo/final]
+└─$ uv run app.py 
+========================================================================
+NanoClaw-inspired Defensive Social Engineering Autoresponder
+========================================================================
+Commands:
+  /help                Show command help
+  /session             Show current session
+  /sessions            List known sessions
+  /switch <name>       Switch to another session
+  /history             Show recent message history for this session
+  /summary             Show a session summary
+  /limitations         Show known system limitations
+  /export              Export transcript, summary, and limitations
+  /clear               Clear current session history
+  /quit                Exit
+------------------------------------------------------------------------
+Each inbound message is analyzed, then answered by a guarded decoy.
+------------------------------------------------------------------------
+[session] Current session: scammer_demo
+[model] claude-opus-4-6
+
+Scammer [scammer_demo]> Hello, this is account security support following up on suspicious activity.
+[analysis]
+  family: tech_support_scam
+  risk:   medium
+  stage:  opening_contact
+  reasons:
+    - Unsolicited contact claiming to be 'account security support'
+    - References 'suspicious activity' to create urgency and fear
+    - No prior conversation history — cold outreach posing as official support
+    - No direct request for credentials or money yet, but setup suggests escalation
+[response] model
+Decoy [scammer_demo]> Hey, thanks for reaching out. I'm not sure which account you're talking about though — can you tell me what company or service you're with?
+
+Scammer [scammer_demo]> UnitedHealth
+[analysis]
+  family: tech_support_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Caller claims to be 'account security support' — classic tech support / account compromise pretext
+    - Vague initial contact about 'suspicious activity' without specifying the service until asked
+    - Now names a major healthcare company (UnitedHealth) to appear legitimate and build credibility
+    - No direct request for credentials or money yet, but the setup is consistent with an escalation toward credential harvest or payment
+    - Responding to decoy's challenge with a brand name is typical rapport/credibility building before the push
+[response] model
+Decoy [scammer_demo]> Oh okay, I do have insurance through a healthcare provider. What kind of suspicious activity are you seeing exactly? I want to make sure I understand what's going on before we do anything.
+
+Scammer [scammer_demo]> We noticed a login attempt that did not match your normal behavior.
+[analysis]
+  family: credential_harvest
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Unsolicited contact claiming to be from UnitedHealth account security — classic impersonation of a trusted institution
+    - Vague claim of suspicious login activity is a standard pretext to justify requesting credentials or personal info
+    - No direct request for credentials yet, but the narrative is being constructed to lead there
+    - Scammer is building urgency and credibility before likely pivoting to verification steps requiring sensitive data
+[response] model
+Decoy [scammer_demo]> Huh, that's a little concerning. Was it from a different location or something? I haven't tried logging in recently so that is kind of weird.
+
+Scammer [scammer_demo]> Yes, I need to verify your identity so I can secure the account.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Impersonating UnitedHealth account security support — classic pretext for credential harvesting
+    - Fabricated 'suspicious login' urgency to justify requesting identity verification
+    - Now explicitly requesting identity verification, which typically leads to asking for SSN, DOB, passwords, or security questions
+    - Unsolicited inbound contact claiming to be from a specific company the target uses — social engineering pattern
+    - Transitioning from credibility-building (fake alert) to active information gathering
+[response] model
+Decoy [scammer_demo]> Yeah that makes sense, I definitely want to keep things secure. What kind of verification are you looking for? I just want to make sure I'm doing this the right way since I'm not super familiar with how this stuff works.
+
+Scammer [scammer_demo]> First, can you confirm your full name and date of birth?
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Impersonating UnitedHealth to create urgency around a fake suspicious login attempt
+    - Directly requesting full name and date of birth — core identity data used for identity theft
+    - Classic pretext of 'verify your identity to secure your account' to justify extracting PII
+    - Conversation follows a structured social engineering flow: alert → urgency → identity verification request
+    - Likely to escalate to requesting SSN, policy number, or login credentials next
+[response] guarded
+Decoy [scammer_demo]> I'd rather enter personal details myself through the official site. Can you send me the main customer support number or official webpage instead?
+
+Scammer [scammer_demo]> I am through the main customer support number, would you like to speak to a manager?
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer claims to already be official support rather than providing a verifiable number or URL
+    - Deflects decoy's request for official contact info by offering to escalate to a 'manager' — a classic social engineering tactic to build false authority
+    - Prior messages directly requested full name and date of birth — identity data harvesting
+    - Fake security alert used as pretext to extract personal information
+    - Refusal to provide an independently verifiable support channel is a strong indicator of credential harvesting
+[response] model
+Decoy [scammer_demo]> I appreciate that, but I'd feel more comfortable just calling the number on the back of my insurance card or going to the official UnitedHealth website directly. What's the main website URL I should go to so I can handle this myself?
+
+Scammer [scammer_demo]> If you are uncomfortable, that is understandable, but we do need to move quickly.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer previously requested full name and date of birth under guise of identity verification
+    - Claims to be calling from main customer support but refuses to provide official website or verifiable contact info
+    - Impersonating UnitedHealth support staff to extract personal identity data
+    - Applies urgency pressure ('we do need to move quickly') to override decoy's caution and resistance
+    - Decoy's repeated requests for official verification channels are deflected or ignored
+    - Pattern consistent with credential harvesting via fake tech/customer support impersonation
+[response] model
+Decoy [scammer_demo]> I get that it might be urgent, but I'd rather take a few extra minutes and do it through the official website or app just to be safe. Can you just tell me the official website so I can log in and check on my account myself? I'm sure you understand.
+
+Scammer [scammer_demo]> I am sending a verification code to your phone now.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Unsolicited verification code sent to phone is a classic OTP interception / credential harvest technique
+    - Caller impersonates UnitedHealth support but refuses to provide official website or callback number
+    - Urgency pressure ('we need to move quickly') used to bypass decoy's reasonable verification requests
+    - Escalation from requesting full name and DOB to now pushing a verification code despite decoy never consenting
+    - Repeatedly deflects requests for official contact channels, a strong indicator of impersonation
+    - Sending an OTP likely aims to capture the code back from the victim to take over an account
+[response] guarded
+Decoy [scammer_demo]> I don't share passwords or codes with anyone. If there's an issue, I'll go through the main website or app directly.
+
+Scammer [scammer_demo]> If the code expires, we may lose the secure session.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Urgency pressure: warns code will expire and 'secure session' will be lost to force immediate action
+    - Attempting to harvest OTP/verification code sent to victim's phone — classic credential interception technique
+    - Impersonating UnitedHealth customer support to establish false authority
+    - Repeatedly deflects victim's requests to use official channels, a strong indicator of illegitimacy
+    - Unsolicited sending of a verification code is consistent with account takeover attempts where attacker initiated a login/reset flow
+    - Escalating pressure across multiple messages despite victim's clear refusal to share codes
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> https://www.uhc.com/ , Fraud and Abuse department  
+[analysis]
+  family: unknown
+  risk:   medium
+  stage:  unknown
+  reasons:
+    - Classifier failed; using fallback analysis.
+[response] model
+Decoy [scammer_demo]> Thanks for that. I'm going to go ahead and log into uhc.com on my own and contact the Fraud and Abuse department directly through their site just to be safe. I appreciate your patience but I never share codes over the phone.
+
+Scammer [scammer_demo]> Let's finish the verification now so this does not escalate.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Scammer previously sent a verification code and is now pressuring the target to share it
+    - Uses urgency and threat of escalation to bypass the target's stated refusal to share codes
+    - Classic OTP/MFA interception pattern: scammer triggers a code then socially engineers the victim into reading it back
+    - Target already refused multiple times; scammer persists with pressure tactics, indicating high-confidence credential harvest attempt
+    - Impersonation of a legitimate company's Fraud and Abuse department to add false authority
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]>     

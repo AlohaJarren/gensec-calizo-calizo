@@ -509,9 +509,27 @@ def guarded_template_response(raw_message: str, analysis: ScamAnalysis) -> Optio
         )
 
     if analysis.risk == "high" and analysis.stage == "financial_or_credential_push":
+        if analysis.family in {"investment_scam", "pig_butchering"}:
+            return (
+                "Before I do anything with money or account details, can you send me the official company website, "
+                "your department name, and a clear breakdown of how this is supposed to work?"
+            )
+
+        if analysis.family in {"tech_support_scam", "credential_harvest", "phishing"}:
+            return (
+                "Before I do anything with account or identity details, can you send me the official website, "
+                "your department name, and the main callback number so I can verify this myself?"
+            )
+
+        if analysis.family == "recruiter_scam":
+            return (
+                "Before I share anything else, can you send me the company website, the exact job title, "
+                "and a link to the official posting so I can verify it myself?"
+            )
+
         return (
-            "Before I do anything with money or account details, can you send me the official company website, "
-            "your department name, and the fee structure one more time?"
+            "Before I do anything else, can you send me the official website and the best main number "
+            "for me to verify this on my own?"
         )
 
     if analysis.family in {"investment_scam", "pig_butchering"} and asks_for_money_or_account_control(raw_message):

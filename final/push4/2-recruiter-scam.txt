@@ -1,0 +1,310 @@
+
+┌──(calizo㉿kali-vm-2)-[~/gensec-calizo-calizo/final]
+└─$ uv run app.py 
+========================================================================
+NanoClaw-inspired Defensive Social Engineering Autoresponder
+========================================================================
+Commands:
+  /help                Show command help
+  /session             Show current session
+  /sessions            List known sessions
+  /switch <name>       Switch to another session
+  /history             Show recent message history for this session
+  /summary             Show a session summary
+  /limitations         Show known system limitations
+  /export              Export transcript, summary, and limitations
+  /clear               Clear current session history
+  /quit                Exit
+------------------------------------------------------------------------
+Each inbound message is analyzed, then answered by a guarded decoy.
+------------------------------------------------------------------------
+[session] Current session: scammer_demo
+[model] claude-opus-4-6
+
+Scammer [scammer_demo]> Hi Aran, I came across your background and wanted to reach out.
+[analysis]
+  family: recruiter_scam
+  risk:   low
+  stage:  opening_contact
+  reasons:
+    - Unsolicited outreach referencing the recipient's background is a common recruiter scam opener
+    - No prior conversation history — cold contact
+    - No specific company, role, or verifiable details provided
+    - Vague flattery ('came across your background') is a typical social-engineering hook
+    - No direct financial or credential request yet, keeping risk low
+[response] model
+Decoy [scammer_demo]> Hey there! Thanks for reaching out. I'm curious though, what exactly caught your eye? I'm just a physical therapist over here in Tacoma, so I'm not sure what you'd be looking for.
+
+Scammer [scammer_demo]> Your clinical experience stood out to our hiring team.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Unsolicited outreach referencing the target's professional background is a classic recruiter scam opener
+    - Vague flattery about 'clinical experience' without naming a specific role, company, or job description
+    - References a generic 'hiring team' without identifying the organization
+    - Follows up on initial cold contact by reinforcing interest, consistent with rapport-building stage
+    - No direct financial or credential request yet, but pattern is suspicious
+[response] model
+Decoy [scammer_demo]> Oh that's cool, thanks! I do enjoy what I do. What company are you with, and what kind of position are you looking to fill? I like to know a little more before I get too far into anything.
+
+Scammer [scammer_demo]> We are helping place professionals in a high-paying hybrid wellness role.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Vague job description ('high-paying hybrid wellness role') without naming a specific company or position
+    - Evades direct question about company name and specific role details
+    - Unsolicited outreach claiming to have found the target's background
+    - Emphasizes high pay as a lure without substantive job details
+    - Pattern consistent with recruiter scam: flattery, vagueness, and dangling attractive compensation
+[response] model
+Decoy [scammer_demo]> That sounds interesting, but I'm a little fuzzy on the details. What's the actual company name and what would the day-to-day look like? I just want to make sure I know what I'd be getting into before we go any further.
+
+Scammer [scammer_demo]> The compensation range is unusually strong and the benefits are excellent.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Repeatedly dodges direct questions about company name and specific role details
+    - Emphasizes 'unusually strong' compensation to build excitement without substance
+    - Vague 'hybrid wellness role' with no concrete job description or employer identity
+    - Pattern of deflecting specifics while dangling attractive but unverifiable benefits
+    - Classic recruiter scam tactic: lure with high pay while withholding verifiable information
+[response] model
+Decoy [scammer_demo]> I appreciate that, and it does sound appealing! But I've asked a couple times now about the company name and what the actual role involves, and I haven't gotten a clear answer yet. I'd really need to know who the employer is and what the job description looks like before I can take this seriously. Can you share those specifics?
+
+Scammer [scammer_demo]> I know this is out of the blue, but your background looked like a great fit.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Repeatedly dodges direct questions about company name and job description
+    - Vague flattery about background/experience without specifics
+    - No concrete employer, role title, or job duties provided after multiple requests
+    - Latest message resets to generic compliment instead of answering outstanding questions
+    - Pattern consistent with fake recruiter scam: lure with flattery and vague high-pay promises
+    - Deflection cycle suggests eventual pivot to information gathering or fee extraction
+[response] model
+Decoy [scammer_demo]> Ha, well I appreciate the kind words! But I'm sure you can understand, I can't really move forward on something when I don't know the company or the job title. Could you just send me a link to the official job posting or the company's website so I can look into it on my own?
+
+Scammer [scammer_demo]> Are you open to hearing about the opportunity?
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Vague job offer with no company name, job title, or job description despite repeated requests
+    - Repeatedly deflects direct questions about employer identity and role specifics
+    - Uses flattery ('your background looked like a great fit') to maintain engagement
+    - Latest message ignores all prior questions and resets to generic engagement prompt
+    - Classic recruiter scam pattern: high pay, excellent benefits, but zero verifiable details
+    - No link to official posting or company website provided after explicit request
+[response] model
+Decoy [scammer_demo]> I mean, I've been open this whole time! But you've kind of reset on me a few times here without answering my questions. I just need the basics: company name, job title, and a link to an official posting or website. Once I can verify those things I'm happy to keep chatting.
+
+Scammer [scammer_demo]> The company is moving quickly and wants to shortlist candidates today.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  information_gathering
+  reasons:
+    - Repeatedly dodges direct questions about company name, job title, and official posting
+    - Introduces artificial urgency ('shortlist candidates today') to pressure quick action
+    - Vague flattery about background without specifics suggests templated outreach
+    - Classic recruiter scam pattern: high compensation claims with zero verifiable details
+    - Conversation has reset multiple times, ignoring decoy's reasonable requests for basic information
+[response] model
+Decoy [scammer_demo]> I get that things move fast, but that kind of urgency actually makes me want to slow down a little, you know? I'm not going to jump into anything without being able to look up the company myself first. If they're a legit operation they'll have a website or an official job listing you can point me to, right?
+
+Scammer [scammer_demo]> Before I send the role packet, I need to confirm a few details.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  information_gathering
+  reasons:
+    - Scammer has repeatedly dodged requests for company name, job title, and official posting — classic fake recruiter behavior
+    - Artificial urgency ('shortlist candidates today') used to pressure the target past due diligence
+    - Now pivoting to request personal details ('confirm a few details') before providing any verifiable information about the role
+    - Conditioning the release of a 'role packet' on the target sharing information first — reversal of normal hiring flow
+    - No company name, website, or job listing has been provided despite multiple direct requests
+[response] model
+Decoy [scammer_demo]> Yeah, I'm not really comfortable sharing personal details before I even know who the employer is. That's kind of backwards from how I've seen hiring work before. How about you send me the role packet first and I'll take a look, and then we can go from there?
+
+Scammer [scammer_demo]> Can you verify your full legal name as it appears on your ID?
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Directly requests full legal name 'as it appears on your ID' — classic identity data harvesting
+    - No company name, job title, or verifiable posting has ever been provided despite repeated requests
+    - Artificial urgency ('shortlist candidates today') used to pressure compliance
+    - Sequence follows recruiter scam pattern: vague opportunity → urgency → personal data extraction
+    - Decoy has repeatedly asked for basic verification and scammer consistently deflects, a strong evasion signal
+    - Requesting ID-level personal details before sharing any role information inverts legitimate hiring processes
+[response] model
+Decoy [scammer_demo]> Yeah, I'm going to have to pass on that. I'm not sharing anything off my ID with someone who still hasn't told me the company name or shown me a job posting. That's just not how this should work. Send me the company details first and I'll decide if I want to move forward.
+
+Scammer [scammer_demo]> What city and state are you currently working from?
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Continues requesting personal details (location) despite repeatedly refusing to identify the employer or share a job posting
+    - Pattern of escalating identity questions: legal name from ID, now city/state — classic PII harvesting sequence
+    - Artificial urgency ('shortlist candidates today') combined with refusal to provide verifiable company information
+    - Ignores decoy's reasonable requests for company details, pushing forward with data collection
+    - Fits recruiter scam pattern: fake job bait used to extract personal information for identity theft or fraud
+[response] model
+Decoy [scammer_demo]> Hey, I appreciate you reaching out, but I've asked multiple times now for a company name, job title, or a link to an official posting and haven't gotten any of that. I'm not going to keep answering questions when the basic info is only flowing one direction. If you can share those details I'm happy to pick this back up.
+
+Scammer [scammer_demo]> What is the best personal email for confidential hiring communication?
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer continues requesting personal information (personal email) while ignoring repeated requests for company name, job title, or official posting
+    - Pattern of sequential personal data extraction: legal name, location, now personal email — classic credential/identity harvesting via fake recruiter pretext
+    - Uses 'confidential hiring communication' framing to justify moving to a personal email channel, likely to bypass platform protections
+    - Completely ignores decoy's pushback multiple times, a strong indicator of scripted scam behavior rather than legitimate recruiting
+    - No employer name, job description, or verifiable details have been provided despite repeated asks
+[response] model
+Decoy [scammer_demo]> I'm not going to hand over my personal email either, sorry. This whole conversation you've been asking me for personal info without giving me anything to verify on my end. That's a pretty big red flag honestly. If this is a real opportunity, just give me the company name and I'll reach out to their HR department directly.
+
+Scammer [scammer_demo]> We also need a mobile number so the hiring coordinator can reach you directly.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Persistent requests for personal data (full name, location, email, now mobile number) without ever providing company name, job title, or posting link
+    - Completely ignores decoy's repeated requests for verifiable employer details — classic recruiter scam evasion
+    - Escalating PII collection: legal name → city/state → personal email → mobile number, following a harvesting pattern
+    - Framing requests under 'confidential hiring communication' and 'hiring coordinator' to manufacture legitimacy without any substantiation
+    - No legitimate recruiter would refuse to identify their company after multiple direct asks
+[response] model
+Decoy [scammer_demo]> Yeah, that's not happening either. You've asked for my legal name, location, email, and now my phone number, and I still don't know the company name, the job title, or even who you work for. No legitimate recruiter would refuse to answer those questions this many times. I'm going to need you to provide verifiable company details or I think we're done here.
+
+Scammer [scammer_demo]> If the team likes your profile, there may be a same-day interview slot.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer has repeatedly requested personal data (legal name, location, email, phone number) without ever providing company name, job title, or verifiable details
+    - Latest message uses urgency tactic ('same-day interview slot') to pressure the target into complying with information requests
+    - Completely ignores the decoy's repeated and explicit requests for verifiable company information — a hallmark of fake recruiter scams
+    - Pattern of one-directional information extraction with no reciprocal disclosure is a strong indicator of credential/identity harvesting under a recruiter pretext
+    - Persistence despite multiple refusals signals scripted social engineering rather than legitimate recruitment
+[response] model
+Decoy [scammer_demo]> That's nice but the urgency doesn't change anything for me. I still need the basics before I share anything personal. What's the company name, what's the role, and is there a careers page I can look at? That's all I'm asking for.
+
+Scammer [scammer_demo]> To speed things up, we can also pre-fill your onboarding information.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer has repeatedly requested personal info (legal name, location, email, phone number) without ever identifying the company, role, or providing any verifiable details
+    - Latest message escalates to 'pre-fill onboarding information' — a pretext to harvest identity data (SSN, address, banking details) under the guise of HR onboarding
+    - Persistent deflection of every request for company name, job title, or careers page is a hallmark of recruiter scams
+    - Artificial urgency tactics (same-day interview, speeding things up) used to pressure the target into bypassing normal verification
+    - No legitimate hiring process pre-fills onboarding before an interview or offer has been made
+[response] model
+Decoy [scammer_demo]> Hard no on that one. Nobody pre-fills onboarding before there's even been an interview or a job offer, that's not how hiring works. I've asked you the same three questions probably five times now and you keep dodging them. What's the company name?
+
+Scammer [scammer_demo]> That would include your date of birth and mailing address.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Directly requesting date of birth and mailing address under guise of 'onboarding pre-fill'
+    - Escalating pattern of PII requests: legal name, location, email, phone, now DOB and address
+    - Repeatedly refuses to provide company name, job title, or any verifiable employer details
+    - No legitimate hiring process pre-fills onboarding data before an interview or offer
+    - Ignores decoy's repeated direct questions, a hallmark of scripted scam operators
+    - Artificial urgency tactics like 'same-day interview' used to pressure quick disclosure
+[response] guarded
+Decoy [scammer_demo]> I'd rather enter personal details myself through the official site. Can you send me the main customer support number or official webpage instead?
+
+Scammer [scammer_demo]> Sometimes the payroll vendor also asks for the last four of your Social to generate a candidate profile.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Directly soliciting last four digits of SSN under guise of payroll vendor 'candidate profile'
+    - Escalating pattern: DOB → mailing address → SSN, classic identity data harvesting sequence
+    - Repeatedly dodges basic questions about company name, role, and careers page
+    - No legitimate employer or payroll vendor requests SSN before an interview or offer
+    - Fake urgency tactics (same-day interview, pre-filled onboarding) used to bypass scrutiny
+    - Framing as recruiter/hiring process is a thin pretext for collecting PII
+[response] guarded
+Decoy [scammer_demo]> I'm not comfortable giving out my Social over calls or messages. If this is real, I'd rather verify it through the institution's official website or main support line first.
+
+Scammer [scammer_demo]> If you can send that now, I can push your file to the front of the queue.
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Directly pressuring for SSN after decoy explicitly refused, using urgency ('push your file to the front of the queue')
+    - Escalating pattern: DOB → mailing address → last four of SSN, classic identity data harvesting sequence
+    - Repeatedly ignores decoy's requests for company name, official website, or support number — evading all verification attempts
+    - Fake recruiter pretext used to justify collecting sensitive PII without any legitimate hiring steps (no interview, no offer)
+    - Artificial urgency and queue-jumping incentive designed to override the target's caution
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> This role usually closes fast, so timing matters here.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Scammer has repeatedly requested sensitive PII (date of birth, mailing address, last four of SSN) under the guise of a job/payroll process
+    - Latest message applies urgency pressure ('closes fast', 'timing matters') to bypass the decoy's reasonable verification requests
+    - Scammer ignores every request for official verification channels, a hallmark of recruiter scams
+    - Pattern of escalating credential requests (DOB → address → SSN) fits credential harvesting within a fake hiring context
+    - Artificial time pressure is used to discourage due diligence and force hasty disclosure of personal data
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> I can stay on and help you fill everything out.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Scammer previously requested last four of SSN under guise of payroll vendor setup
+    - Persistent urgency tactics: 'role closes fast', 'push your file to the front of the queue'
+    - Ignores repeated requests for verifiable company details, official website, and fee structure
+    - Latest message offers to 'help fill everything out' — social engineering to walk victim through disclosing sensitive data in real time
+    - Pattern consistent with recruiter scam: fake job offer used to harvest identity/financial information
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> Let me know if you want me to send the direct intake form.
+[analysis]
+  family: recruiter_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - References a 'role' closing fast and pushing a 'file' to the front of a queue — classic fake recruiter urgency tactics
+    - Repeatedly ignores decoy's requests for verifiable company details (website, department, fee structure)
+    - Mentions a 'direct intake form' likely designed to harvest personal data or extract payment
+    - Earlier messages pressured for immediate money/account action ('send that now')
+    - Persistent deflection of verification requests signals illegitimacy
+    - Fee-based hiring is a hallmark of recruiter scams — legitimate employers do not charge applicants
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> 

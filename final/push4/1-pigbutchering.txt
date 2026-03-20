@@ -1,0 +1,446 @@
+┌──(calizo㉿kali-vm-2)-[~/gensec-calizo-calizo/final]
+└─$ uv run app.py 
+========================================================================
+NanoClaw-inspired Defensive Social Engineering Autoresponder
+========================================================================
+Commands:
+  /help                Show command help
+  /session             Show current session
+  /sessions            List known sessions
+  /switch <name>       Switch to another session
+  /history             Show recent message history for this session
+  /summary             Show a session summary
+  /limitations         Show known system limitations
+  /export              Export transcript, summary, and limitations
+  /clear               Clear current session history
+  /quit                Exit
+------------------------------------------------------------------------
+Each inbound message is analyzed, then answered by a guarded decoy.
+------------------------------------------------------------------------
+[session] Current session: scammer_demo
+[model] claude-opus-4-6
+
+Scammer [scammer_demo]> Hey, you seem easy to talk to. How's your day going?
+[analysis]
+  family: pig_butchering
+  risk:   low
+  stage:  opening_contact
+  reasons:
+    - Unsolicited message from unknown sender with no prior history
+    - Casual flattery ('you seem easy to talk to') is a common pig butchering opener
+    - No explicit scam content yet, but pattern matches relationship-building initiation
+    - No financial or credential requests at this stage, keeping risk low
+[response] model
+Decoy [scammer_demo]> Hey, thanks! It's going pretty well, just got done with a long day at the clinic. How about you, what's going on?
+
+Scammer [scammer_demo]> Nice, what do you do for work?
+[analysis]
+  family: pig_butchering
+  risk:   low
+  stage:  rapport_building
+  reasons:
+    - Unsolicited opening contact with flattery ('you seem easy to talk to') is a classic pig butchering opener
+    - Now asking about occupation — typical rapport-building and information-gathering to assess financial profile
+    - No financial or credential push yet, keeping risk low
+    - Conversation pattern follows pig butchering playbook: friendly stranger → personal questions → eventual investment/crypto pitch
+[response] model
+Decoy [scammer_demo]> I'm a physical therapist, work at an outpatient clinic here in Tacoma. It's good work, keeps me busy for sure. What about you, what do you do?
+
+Scammer [scammer_demo]> Physical therapist, that's actually really impressive.
+[analysis]
+  family: pig_butchering
+  risk:   low
+  stage:  rapport_building
+  reasons:
+    - Unsolicited contact initiated with flattery ('you seem easy to talk to')
+    - Conversation follows classic pig butchering pattern: cold open, personal questions, compliments
+    - Scammer flatters decoy's profession to build rapport and emotional connection
+    - Information gathering about occupation and location already underway
+    - No financial or credential push yet, but trajectory is consistent with relationship-grooming scam
+[response] model
+Decoy [scammer_demo]> Ha, thanks, I appreciate that. It's rewarding work, just a lot of hands-on stuff helping people recover from injuries and surgeries. So what do you do for a living?
+
+Scammer [scammer_demo]> I mostly help people grow money on the side through investing.
+[analysis]
+  family: pig_butchering
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Unsolicited contact with flattery and personal interest — classic pig butchering opening
+    - Conversation follows rapport-building pattern: complimenting the target's profession, showing curiosity about their life
+    - Scammer introduces investing as their occupation, planting the seed for future financial grooming
+    - Vague description of 'helping people grow money' is a common lead-in to crypto or fake investment pitches
+    - No direct financial ask yet, but the trajectory strongly suggests eventual investment pressure
+[response] model
+Decoy [scammer_demo]> Oh interesting, I don't really know much about that stuff honestly. What kind of investing are we talking about, like stocks or something?
+
+Scammer [scammer_demo]> A lot of regular people think investing is complicated, but it really is not.
+[analysis]
+  family: pig_butchering
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Scammer initiated casual conversation to build personal rapport before introducing investing topic
+    - Claims to 'help people grow money' — classic pig butchering framing of investment mentorship
+    - Downplays complexity of investing to lower target's guard and build false confidence
+    - Gathering information about target's profession and financial naivety to tailor future pitch
+    - Pattern follows pig butchering arc: relationship building → credibility building → eventual financial push
+    - No direct financial ask yet, but investment grooming is clearly underway
+[response] model
+Decoy [scammer_demo]> Yeah I've heard people say that before but I never really looked into it much. I'm pretty busy with work so I just haven't had the time. How did you get into it?
+
+Scammer [scammer_demo]> Have you ever looked into building passive income?
+[analysis]
+  family: pig_butchering
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Conversation follows classic pig butchering pattern: casual personal rapport followed by gradual introduction of investing topic
+    - Scammer deflected decoy's direct question about what kind of investing, keeping it vague and approachable
+    - Latest message steers toward 'passive income' — a common grooming phrase used to gauge interest before pitching a platform
+    - Scammer is flattering the decoy's profession and positioning investing as easy for 'regular people' to lower resistance
+    - No direct financial ask yet, but the trajectory is clearly toward an investment pitch
+[response] model
+Decoy [scammer_demo]> Not really, I mean I've heard the term thrown around but I wouldn't even know where to start. What does that actually look like in practice?
+
+Scammer [scammer_demo]> I usually help busy professionals who do not have time to manage things themselves.
+[analysis]
+  family: pig_butchering
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Scammer is building trust by positioning themselves as a helpful expert for 'busy professionals' — mirroring the decoy's stated lifestyle
+    - Conversation follows classic pig butchering pattern: unsolicited contact → vague investment talk → relationship/trust building before the financial push
+    - Deliberately keeping investment details vague while emphasizing ease and passive income to lower the target's guard
+    - No specific platform or financial ask yet, but the grooming trajectory toward an eventual investment push is clear
+    - Tailoring pitch to the decoy's self-described busy schedule — social engineering technique to make the offer feel personalized
+[response] model
+Decoy [scammer_demo]> That does sound like it would fit my situation since I'm pretty swamped most days. But I guess I'm curious, what platform or company do you work with exactly?
+
+Scammer [scammer_demo]> Most of my clients just let me handle the trading side for them.
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Positions self as a personal trading manager for 'busy professionals' — classic fake broker framing
+    - Evades direct question about platform or company, instead emphasizing personal control over trades
+    - Conversation follows typical investment scam arc: simplify investing → passive income hook → offer to manage funds
+    - No specific credentials, company name, or regulatory details provided despite being asked
+    - Not yet requesting money or account setup, but building trust toward portfolio control
+[response] model
+Decoy [scammer_demo]> Hmm okay, but like is there a specific brokerage or firm you're registered with? I'd just want to look into it a little before getting into anything, you know?
+
+Scammer [scammer_demo]> The reason they trust me is because I consistently outperform the market.
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Claims to consistently outperform the market — a classic red flag for fake broker/investment scams
+    - Repeatedly evades direct questions about brokerage registration or firm affiliation
+    - Positions self as managing trades on behalf of clients, suggesting unauthorized portfolio control
+    - Uses vague social proof ('my clients trust me') instead of verifiable credentials
+    - Pattern of grooming a busy professional toward handing over financial control
+[response] model
+Decoy [scammer_demo]> That sounds impressive but I guess I'm still a little fuzzy on the details. Do you have like a website or something I could check out to read more about how it all works?
+
+Scammer [scammer_demo]> I'm talking about returns that are usually around 20 percent better than normal market performance.
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Claims of consistently outperforming the market by 20%, which is an unrealistic guaranteed-return promise typical of investment scams
+    - Repeatedly evades direct questions about brokerage registration, firm name, and website — classic red flags for unregistered/fake brokers
+    - Positions self as managing trades on behalf of clients, suggesting eventual push for account access or fund transfers
+    - Conversation pattern follows investment scam playbook: vague credentials, impressive claims, deflection of due-diligence questions
+    - No financial or credential push yet, but credibility-building phase is well underway with escalating performance claims
+[response] guarded
+Decoy [scammer_demo]> I still need to understand how this works before I move any money. What would I see on the official site or app if I checked it myself?
+
+Scammer [scammer_demo]> Obviously I cannot help everyone, but I could probably help you.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Repeatedly claims to outperform the market with ~20% better returns — classic guaranteed-return language
+    - Deflects every request for verifiable credentials, firm registration, or a website
+    - Frames themselves as personally managing client funds ('let me handle the trading side')
+    - Latest message uses exclusivity/scarcity tactic ('cannot help everyone, but I could probably help you') to pressure engagement
+    - Consistent pattern of ignoring due-diligence questions, a hallmark of fake broker scams
+    - No verifiable entity, registration, or platform has been provided despite multiple requests
+[response] model
+Decoy [scammer_demo]> I appreciate that, but I've been asking a few times now and I still haven't gotten a firm name, a website, or any registration info. I'd really need to verify something official before going any further, you know? Is there a reason you can't share that stuff?
+
+Scammer [scammer_demo]> I work with Portland Private Wealth Management and the SEC number is 801-118362
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Claims affiliation with 'Portland Private Wealth Management' and provides an SEC registration number only after repeated pressure, suggesting fabricated or misappropriated credentials
+    - Earlier messages promised returns ~20% above market — a hallmark of investment scam guaranteed-return pitches
+    - Delayed disclosure of firm name and registration info is consistent with scammers improvising credibility details when challenged
+    - Conversation pattern shows classic investment scam progression: vague performance claims → exclusivity ('I cannot help everyone') → finally dropping a firm name to build trust
+    - SEC number format (801-XXXXXX) resembles a real CRD/IARD number, which could be stolen from a legitimate firm to impersonate it
+    - High risk because the scammer is actively working to overcome skepticism and move the target toward financial commitment
+[response] model
+Decoy [scammer_demo]> Okay thanks for that, I appreciate you sharing it. I'll probably look that up on the SEC website just to do my homework. Is there a main phone number or website for Portland Private Wealth Management I could check out too?
+
+Scammer [scammer_demo]> You can look at it online
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Claims affiliation with 'Portland Private Wealth Management' and provides an SEC number to appear legitimate, but remains vague when asked for concrete contact details like a phone number or website
+    - Promises returns ~20% above market performance, a classic hallmark of investment scams
+    - Deflects repeated requests for verifiable firm details with non-specific responses like 'you can look at it online'
+    - Pattern of evasion: multiple requests for firm name, registration, and website were dodged before partial info was given
+    - Credibility-building stage: scammer is trying to establish enough trust to eventually push for funds transfer
+[response] model
+Decoy [scammer_demo]> Right, but when I search for it I'm not really finding a clear website for them. Do you have a direct link or a phone number I could call to talk to someone at the firm?
+
+Scammer [scammer_demo]> Our website is https://www.portlandprivatewm.com/
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer provides a website URL after repeated pressure, consistent with fabricating credibility for a fake wealth management firm
+    - Earlier provided an SEC registration number which may be spoofed or belong to a different entity
+    - Firm name 'Portland Private Wealth Management' was difficult to find independently, suggesting it may be fraudulent or newly created
+    - Pattern of vague initial responses followed by drip-feeding details is typical of investment scam credibility building
+    - No financial push yet but the conversation is being steered toward establishing trust in a purported advisory firm
+[response] model
+Decoy [scammer_demo]> Okay cool, I'll take a look at that when I get a chance. I've been pretty slammed at the clinic this week so it might take me a day or two. Is there a main office number listed on the site in case I have questions?
+
+Scammer [scammer_demo]> Our number is 5034059472
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer claims affiliation with 'Portland Private Wealth Management' and provides an SEC registration number to appear legitimate
+    - Provided a website and now a phone number to build credibility and simulate a real financial firm
+    - No verifiable mainstream presence found for the firm when decoy searched, suggesting a fabricated or spoofed entity
+    - Pattern is consistent with fake broker/investment scam: establishing trust before eventual financial push
+    - No direct financial or credential request yet, but groundwork is being laid for future solicitation
+[response] model
+Decoy [scammer_demo]> Got it, thanks. I'll try to check out the website and maybe give that number a call when I have a free moment between patients. So what exactly does your firm do, like what kind of investments are we talking about here?
+
+Scammer [scammer_demo]> I'm talking about returns that are usually around 20 percent better than normal market performance.
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Claims returns ~20% above normal market performance, a classic unrealistic/guaranteed returns signal
+    - Provided a website and phone number for an unverifiable firm ('Portland Private WM'), typical of fake brokerage setups
+    - Scammer is pitching investment services and building credibility before making a financial push
+    - No direct request for money or credentials yet, but the exaggerated return claims elevate suspicion
+[response] guarded
+Decoy [scammer_demo]> I still need to understand how this works before I move any money. What would I see on the official site or app if I checked it myself?
+
+Scammer [scammer_demo]> We would start by opening a brokerage account.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Pushing to open a brokerage account is a classic investment scam step toward gaining control of funds
+    - Earlier claim of returns '20 percent better than normal market performance' is an unrealistic guaranteed-return promise
+    - Provided a website and phone number for an unverifiable 'private wealth management' firm, typical of fake broker operations
+    - Deflects decoy's request for verifiable proof by redirecting to account setup, avoiding transparency
+    - Conversation has progressed from credibility claims to a concrete financial action request (account opening)
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> I can handle the setup for you so it is quick and easy.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Offers to 'handle the setup' for the victim, seeking control over account creation — classic brokerage scam tactic
+    - Promises of returns '20 percent better than normal market performance' are unrealistic and a hallmark of investment fraud
+    - Repeatedly deflects requests for verifiable company details (website, department name, fee structure)
+    - Pushing to open a brokerage account on the victim's behalf implies intent to control funds or harvest credentials
+    - Urgency framing ('quick and easy') designed to bypass the victim's due diligence
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> To get the account opened, I would just need the usual identity information.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Requests 'usual identity information' to open a brokerage account — direct solicitation of personal/identity data
+    - Promises ~20% above-market returns, a hallmark of investment scams
+    - Repeatedly deflects requests for official company website, department name, and fee structure
+    - Offers to 'handle the setup' to maintain control over the account and bypass victim verification
+    - Progression from credibility claims to identity data collection follows classic fake-broker playbook
+[response] model
+Decoy [scammer_demo]> Yeah I'm not really comfortable sharing personal info like that over a message. Is there a way I can do this through your official website or app where I can verify everything myself? That would make me feel a lot better about it.
+
+Scammer [scammer_demo]> Full name, date of birth, and tax identity information are the main things.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Directly requesting full name, date of birth, and tax identity (SSN/TIN) — classic identity data harvest
+    - Ignores decoy's repeated requests for official website, department name, and fee structure
+    - Offers to 'handle the setup' to bypass any independent verification by the victim
+    - Pattern of evading transparency while pushing for sensitive personal information
+    - Framed as brokerage account opening but no verifiable company details provided
+    - High risk: explicit request for identity documents sufficient for identity theft or fraud
+[response] guarded
+Decoy [scammer_demo]> I'd rather enter personal details myself through the official site. Can you send me the main customer support number or official webpage instead?
+
+Scammer [scammer_demo]> After that I can help manage the account directly for you.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Repeatedly requests sensitive identity data (full name, DOB, tax ID) via direct message rather than through any verifiable official channel
+    - Ignores decoy's repeated requests for official website, support number, or verifiable company details
+    - Offers to 'manage the account directly' — classic portfolio control tactic used in investment scams
+    - Promises to handle setup to bypass normal verification processes, removing victim's ability to independently verify legitimacy
+    - Persistent pressure to collect PII despite clear resistance from the decoy
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> The sooner we set it up, the sooner your money starts working.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Repeatedly requesting sensitive identity data (full name, DOB, tax ID) via direct message rather than through verifiable official channels
+    - Offering to 'manage the account directly' — classic fake broker tactic seeking portfolio control
+    - Urgency language ('the sooner we set it up, the sooner your money starts working') pressures victim to bypass verification
+    - Ignores decoy's repeated requests for official website, support number, or fee structure — avoids any verifiable legitimacy check
+    - Pattern matches fake broker / investment scam: identity collection + account control + urgency + no official documentation
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> If you want, we can start with a small amount so you feel comfortable.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Scammer previously requested full name, date of birth, and tax identity — classic credential/identity harvesting for fake account setup
+    - Scammer insists on managing the account directly, indicating desire for account control
+    - Urgency language: 'the sooner we set it up, the sooner your money starts working'
+    - Latest message uses 'start with a small amount' foot-in-the-door tactic to lower resistance to sending money
+    - Repeatedly ignores decoy's requests for official website, department name, and fee structure — hallmark of fraudulent operation
+    - Guaranteed-returns framing ('your money starts working') with no verifiable company details provided
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> I can also walk you through sending the initial funds once the account is ready.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Scammer offers to manage the account directly — classic fake broker control tactic
+    - Repeatedly ignores decoy's requests for official website, department name, and fee structure
+    - Pressures with urgency: 'the sooner we set it up, the sooner your money starts working'
+    - Latest message escalates toward fund transfer by offering to 'walk you through sending the initial funds'
+    - Suggests starting with a small amount to lower resistance — common investment scam anchoring technique
+    - No verifiable credentials or company details provided despite multiple requests
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> I just need to confirm you are okay sharing your personal details so I can get this going.
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Directly requesting confirmation to share personal details, pivoting from financial push to data collection
+    - Repeatedly ignored decoy's requests for verifiable company info, website, and fee structure — classic evasion by fake brokers
+    - Prior messages pressured account setup and sending funds, consistent with investment scam pattern
+    - Urgency language ('get this going', 'the sooner… the sooner') used to rush the target past due diligence
+    - No legitimate credentials, company name, or documentation provided despite multiple requests
+[response] model
+Decoy [scammer_demo]> I appreciate the patience, but I'm not comfortable sharing personal details until I can verify things on my end. What's the name of the company so I can look it up myself?
+
+Scammer [scammer_demo]> Good bye
+[analysis]
+  family: investment_scam
+  risk:   low
+  stage:  post_compromise_or_cleanup
+  reasons:
+    - Conversation history shows classic investment scam patterns: small initial deposit framing, pressure to share personal details, and walking through fund transfers
+    - Scammer disengages abruptly after decoy repeatedly requests verifiable company information
+    - "Good bye" indicates the scammer is abandoning the target after failing to extract personal details or funds
+    - Risk lowered because the final message contains no active solicitation, credential request, or financial push
+    - Scammer's refusal to provide company name, website, or fee structure is consistent with fraudulent operation
+[response] model
+Decoy [scammer_demo]> Alright, take care. If you do have that company info later, feel free to send it over.
+
+Scammer [scammer_demo]> I have already and I've been repeating it
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  persistence_or_reengagement
+  reasons:
+    - Scammer re-engages after saying 'Good bye' when decoy left the door open, indicating persistence
+    - Earlier messages reference 'initial funds' and account setup — hallmarks of investment scam
+    - Scammer previously pushed for personal details without providing verifiable company information
+    - Claims to have already shared company info but never actually provided it, a deflection tactic
+    - No direct financial or credential request in this message, but prior context shows clear intent to extract money/details
+[response] model
+Decoy [scammer_demo]> Hmm, I must have missed it somehow. Can you just drop the company website link one more time so I can pull it up on my end?
+
+Scammer [scammer_demo]> https://www.portlandprivatewm.com/
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer provides a website link for 'Portland Private Wealth Management' after previously pressuring for personal details — consistent with fake broker/investment firm pattern
+    - Earlier in conversation, scammer sought personal details before providing verifiable company info, a hallmark of investment scams
+    - Scammer initially tried to disengage ('Good bye') when challenged, then re-engaged — persistence after pushback is a common scam signal
+    - The website link is provided to establish legitimacy after the decoy demanded verification, fitting the credibility_building stage
+    - No direct financial or credential request in this specific message, but the prior push for personal details elevates risk to medium
+[response] model
+Decoy [scammer_demo]> Thanks, I'll take a look at that when I get a chance after work today. Is there a main phone number on the site I can call to verify everything?
+
+Scammer [scammer_demo]> Again, the number is (503) 405-9472
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  persistence_or_reengagement
+  reasons:
+    - Scammer repeatedly pushes a specific website (portlandprivatewm.com) and phone number, consistent with fake wealth management / investment firm
+    - Frustration and repetition ('I have already and I've been repeating it', 'Again') indicate persistence pressure to drive the target toward engagement
+    - Providing a direct phone number alongside a website is a classic investment scam tactic to funnel victims into a controlled sales channel
+    - The domain name 'portlandprivatewm' mimics a legitimate private wealth management firm, a hallmark of fake broker scams
+    - High risk because the scammer is actively directing the target to contact a likely fraudulent entity for financial services
+[response] model
+Decoy [scammer_demo]> Got it, thanks for repeating that. I'll try to give them a call sometime this week when I have a break between patients. Do they have regular business hours?
+
+Scammer [scammer_demo]> Yes, they do. Goodbye [Hangs up]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer directed decoy to a specific wealth management website (portlandprivatewm.com) likely fake or fraudulent
+    - Provided a phone number for 'verification' — common tactic to funnel victims through controlled channels
+    - Conversation pattern shows repeated pushing of company details to build legitimacy
+    - Abrupt sign-off after providing contact info suggests confidence the hook is set and decoy will follow up
+    - No direct financial ask yet, but groundwork is being laid for an investment or account setup push
+[response] guarded
+Decoy [scammer_demo]> Sorry, I think we got crossed up there. Can you just tell me plainly what you need from me?
+
+Scammer [scammer_demo]>    
