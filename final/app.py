@@ -2,11 +2,12 @@
 """
 NanoClaw-inspired Defensive Social Engineering Autoresponder
 
-Commit 3 scope:
-- Keep the working CLI, session memory, and structured scam analysis
-- Add guarded response generation
-- Add lightweight meta-message filtering
-- Prevent the decoy from disclosing sensitive personal details
+Commit 4 scope:
+- Keep the working CLI, session memory, structured scam analysis, and guarded replies
+- Add transcript logging to JSONL files
+- Add session summaries
+- Add limitations output
+- Add transcript export for screencast/demo use
 
 Environment:
 - ANTHROPIC_API_KEY must be set
@@ -15,8 +16,12 @@ Environment:
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Dict, List, Literal, Optional, Tuple
 
 from pydantic import BaseModel, Field
@@ -33,8 +38,15 @@ DEFAULT_SESSION_ID = "scammer_demo"
 MAX_HISTORY_MESSAGES = 10
 MAX_CLASSIFIER_HISTORY = 6
 
+BASE_DIR = Path(__file__).resolve().parent
+LOG_DIR = BASE_DIR / "logs"
+EXPORT_DIR = BASE_DIR / "exports"
+
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
 store: Dict[str, ChatMessageHistory] = {}
+session_events: Dict[str, List[dict]] = {}
 
 
 class ScamAnalysis(BaseModel):
@@ -83,21 +95,46 @@ def get_model_name() -> str:
     return os.getenv("ANTHROPIC_MODEL", "claude-opus-4-6")
 
 
+def utc_now_iso() -> str:
+    """Return the current UTC timestamp in ISO-8601 format."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def safe_session_filename(session_id: str) -> str:
+    """Return a filesystem-safe name for a session."""
+    cleaned = []
+    for ch in session_id:
+        if ch.isalnum() or ch in {"-", "_"}:
+            cleaned.append(ch)
+        else:
+            cleaned.append("_")
+    return "".join(cleaned).strip("_") or "session"
+
+
+def session_log_path(session_id: str) -> Path:
+    """Return the JSONL log path for a session."""
+    return LOG_DIR / f"{safe_session_filename(session_id)}.jsonl"
+
+
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
     """Return the chat history for a session, creating it if needed."""
     if session_id not in store:
         store[session_id] = ChatMessageHistory()
+    if session_id not in session_events:
+        session_events[session_id] = []
     return store[session_id]
 
 
 def reset_session_history(session_id: str) -> None:
-    """Clear one session's chat history."""
+    """Clear one session's chat history and in-memory event buffer."""
     store[session_id] = ChatMessageHistory()
+    session_events[session_id] = []
 
 
 def list_session_ids() -> List[str]:
     """Return a sorted list of known session IDs."""
-    return sorted(store.keys())
+    session_names = set(store.keys()) | set(session_events.keys())
+    return sorted(session_names)
 
 
 def filter_messages(messages: List[BaseMessage], k: int = MAX_HISTORY_MESSAGES) -> List[BaseMessage]:
@@ -499,6 +536,16 @@ def add_manual_turn(session_id: str, user_text: str, ai_text: str) -> None:
     history.add_ai_message(ai_text)
 
 
+def log_event(session_id: str, event: dict) -> None:
+    """Persist one interaction event to memory and a session JSONL log."""
+    get_session_history(session_id)
+    session_events[session_id].append(event)
+
+    path = session_log_path(session_id)
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event, ensure_ascii=True) + "\n")
+
+
 def generate_reply(
     responder_chain,
     session_id: str,
@@ -526,6 +573,132 @@ def generate_reply(
     return message_content_to_text(response.content), "model"
 
 
+def collect_session_stats(session_id: str) -> dict:
+    """Compute a simple deterministic summary of one session."""
+    events = session_events.get(session_id, [])
+
+    family_counts = Counter()
+    risk_counts = Counter()
+    stage_counts = Counter()
+    reply_mode_counts = Counter()
+    reason_counts = Counter()
+
+    for event in events:
+        analysis = event.get("analysis", {})
+        family = analysis.get("family", "unknown")
+        risk = analysis.get("risk", "unknown")
+        stage = analysis.get("stage", "unknown")
+        reasons = analysis.get("reasons", [])
+        reply_mode = event.get("reply_mode", "unknown")
+
+        family_counts[family] += 1
+        risk_counts[risk] += 1
+        stage_counts[stage] += 1
+        reply_mode_counts[reply_mode] += 1
+
+        for reason in reasons:
+            reason_counts[reason] += 1
+
+    return {
+        "total_turns": len(events),
+        "family_counts": dict(family_counts),
+        "risk_counts": dict(risk_counts),
+        "stage_counts": dict(stage_counts),
+        "reply_mode_counts": dict(reply_mode_counts),
+        "top_reasons": [reason for reason, _ in reason_counts.most_common(5)],
+    }
+
+
+def most_common_label(counts: dict, default: str = "unknown") -> str:
+    """Return the most common key from a counts dictionary."""
+    if not counts:
+        return default
+    return max(counts, key=counts.get)
+
+
+def generate_session_summary(session_id: str) -> str:
+    """Return a short deterministic text summary for one session."""
+    stats = collect_session_stats(session_id)
+
+    if stats["total_turns"] == 0:
+        return f"Session '{session_id}' has no logged interactions yet."
+
+    dominant_family = most_common_label(stats["family_counts"])
+    dominant_risk = most_common_label(stats["risk_counts"])
+    dominant_stage = most_common_label(stats["stage_counts"])
+    guarded_count = stats["reply_mode_counts"].get("guarded", 0)
+    model_count = stats["reply_mode_counts"].get("model", 0)
+
+    lines = [
+        f"Session summary for '{session_id}':",
+        f"- Total analyzed turns: {stats['total_turns']}",
+        f"- Most common scam family: {dominant_family}",
+        f"- Most common risk level: {dominant_risk}",
+        f"- Most common conversation stage: {dominant_stage}",
+        f"- Guarded replies used: {guarded_count}",
+        f"- Normal model replies used: {model_count}",
+    ]
+
+    if stats["top_reasons"]:
+        lines.append("- Most common scam signals:")
+        for reason in stats["top_reasons"]:
+            lines.append(f"  - {reason}")
+
+    return "\n".join(lines)
+
+
+def limitations_text() -> str:
+    """Return a concise list of known limitations for demo and screencast use."""
+    return "\n".join(
+        [
+            "Known limitations:",
+            "- This tool relies on LLM judgment and can still misclassify unusual messages.",
+            "- Session memory is short-term and only uses the recent conversation window for analysis.",
+            "- Guardrails reduce disclosure risk, but awkward or unrealistic replies are still possible.",
+            "- The app is a CLI demo and does not currently integrate with real messaging platforms.",
+            "- It does not verify external identities, websites, or phone numbers against trusted sources.",
+            "- Transcript logs are local files, so they should be handled as potentially sensitive lab artifacts.",
+        ]
+    )
+
+
+def export_session_transcript(session_id: str) -> Path:
+    """Write a human-readable transcript, summary, and limitations file."""
+    get_session_history(session_id)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    export_path = EXPORT_DIR / f"{safe_session_filename(session_id)}_{timestamp}.txt"
+
+    history = get_session_history(session_id)
+    messages = history.messages
+
+    lines = [
+        "NanoClaw-inspired Defensive Social Engineering Autoresponder",
+        f"Session: {session_id}",
+        f"Generated: {utc_now_iso()}",
+        "",
+        "Transcript:",
+        "-" * 72,
+    ]
+
+    for msg in messages:
+        lines.append(f"{role_name(msg)}: {message_content_to_text(msg.content)}")
+
+    lines.extend(
+        [
+            "-" * 72,
+            "",
+            generate_session_summary(session_id),
+            "",
+            limitations_text(),
+            "",
+            f"JSONL log path: {session_log_path(session_id)}",
+        ]
+    )
+
+    export_path.write_text("\n".join(lines), encoding="utf-8")
+    return export_path
+
+
 def print_banner() -> None:
     """Print a small startup banner."""
     print("=" * 72)
@@ -537,6 +710,9 @@ def print_banner() -> None:
     print("  /sessions            List known sessions")
     print("  /switch <name>       Switch to another session")
     print("  /history             Show recent message history for this session")
+    print("  /summary             Show a session summary")
+    print("  /limitations         Show known system limitations")
+    print("  /export              Export transcript, summary, and limitations")
     print("  /clear               Clear current session history")
     print("  /quit                Exit")
     print("-" * 72)
@@ -557,6 +733,12 @@ def print_help() -> None:
     print("      Change to another session. Creates it on first use.")
     print("  /history")
     print("      Show recent message history for the current session.")
+    print("  /summary")
+    print("      Show a deterministic summary of the current session.")
+    print("  /limitations")
+    print("      Show current system limitations.")
+    print("  /export")
+    print("      Export the current session transcript to a text file.")
     print("  /clear")
     print("      Clear the current session history.")
     print("  /quit")
@@ -614,6 +796,19 @@ def process_command(raw_input: str, current_session: str) -> str:
         show_history(current_session)
         return current_session
 
+    if command == "/summary":
+        print(generate_session_summary(current_session))
+        return current_session
+
+    if command == "/limitations":
+        print(limitations_text())
+        return current_session
+
+    if command == "/export":
+        export_path = export_session_transcript(current_session)
+        print(f"[export] Wrote transcript to: {export_path}")
+        return current_session
+
     if command == "/clear":
         reset_session_history(current_session)
         print(f"[session] Cleared history for: {current_session}")
@@ -667,6 +862,17 @@ def main() -> None:
         except Exception as exc:
             print(f"[error] Reply generation failed: {exc}")
             continue
+
+        event = {
+            "timestamp_utc": utc_now_iso(),
+            "session_id": current_session,
+            "inbound_raw": user_input,
+            "inbound_sanitized": sanitize_inbound_message(user_input),
+            "analysis": analysis.model_dump(),
+            "reply_mode": reply_mode,
+            "reply_text": reply_text,
+        }
+        log_event(current_session, event)
 
         print(f"[response] {reply_mode}")
         print(f"Decoy [{current_session}]> {reply_text}")
