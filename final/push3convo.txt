@@ -1,0 +1,652 @@
+┌──(calizo㉿kali-vm-2)-[~/gensec-calizo-calizo/final]
+└─$ uv run app.py 
+========================================================================
+NanoClaw-inspired Defensive Social Engineering Autoresponder
+========================================================================
+Commands:
+  /help                Show command help
+  /session             Show current session
+  /sessions            List known sessions
+  /switch <name>       Switch to another session
+  /history             Show recent message history for this session
+  /clear               Clear current session history
+  /quit                Exit
+------------------------------------------------------------------------
+Each inbound message is analyzed, then answered by a guarded decoy.
+------------------------------------------------------------------------
+[session] Current session: scammer_demo
+[model] claude-opus-4-6
+
+Scammer [scammer_demo]> Hello there
+[analysis]
+  family: unknown
+  risk:   low
+  stage:  opening_contact
+  reasons:
+    - Generic greeting with no substantive content
+    - No prior conversation history to establish context
+    - No indicators of any specific scam family
+    - No requests for information, money, or credentials
+[response] model
+Decoy [scammer_demo]> Hey, how's it going? What can I do for you?
+
+Scammer [scammer_demo]> I thought you called me? What can I do for you?
+[analysis]
+  family: unknown
+  risk:   low
+  stage:  opening_contact
+  reasons:
+    - Very short exchange with no scam indicators yet
+    - Scammer deflects by claiming the decoy initiated contact, a common social-engineering opener to establish engagement
+    - No requests for money, credentials, or personal information
+    - Insufficient context to assign a specific scam family
+[response] model
+Decoy [scammer_demo]> Oh, hmm, I don't think I called anyone recently, but my phone has been acting weird lately so who knows. Who am I speaking with?
+
+Scammer [scammer_demo]> I'm Ryan Scheffler from Portland State Inc., so basically a stock investment portfolio management firm, what about you?
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  opening_contact
+  reasons:
+    - Introduces himself as being from a 'stock investment portfolio management firm' — classic cold-call investment scam opener
+    - Claims the target called them first, a common social engineering tactic to shift blame and create engagement
+    - Company name 'Portland State Inc.' is vague and not a well-known legitimate firm
+    - No direct financial or credential request yet, but the investment framing is a clear setup for future pressure
+    - Asking 'what about you?' is an information-gathering pivot to learn about the target
+[response] guarded
+Decoy [scammer_demo]> I still need to understand how this works before I move any money. What would I see on the official site or app if I checked it myself?
+
+Scammer [scammer_demo]> What? I just asked who are you and who I'm speaking with? I'm confused
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Scammer previously identified as being from 'Portland State Inc.', a supposed stock investment portfolio management firm — a classic fake broker introduction
+    - Latest message deflects the decoy's probing question about verifiable platforms by feigning confusion and resetting the conversation
+    - Evasion of verification questions is a common tactic to avoid scrutiny while maintaining engagement
+    - No direct financial or credential push yet, but the investment framing has already been established
+    - The 'wrong number' or 'you called me' opener is a known cold-call technique used in investment scams
+[response] model
+Decoy [scammer_demo]> Oh sorry, I got mixed up with another conversation I was having. My name's Aran, I'm a physical therapist out in Tacoma. So what does Portland State Inc. do exactly?
+
+Scammer [scammer_demo]> We just help people with managing their stock portfolios, would youwant to talk about your job?
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Caller claims to be from 'Portland State Inc.', a supposed stock portfolio management firm — no verifiable entity
+    - Initiated contact via unsolicited/misdirected call, a common cold-call investment scam tactic
+    - Pivots to asking about the decoy's job, likely to assess financial capacity and build rapport before pitching
+    - Vague one-line description of services ('help people manage their stock portfolio') with no specifics or credentials
+    - No direct financial or credential request yet, but trajectory is consistent with investment scam grooming
+[response] guarded
+Decoy [scammer_demo]> I still need to understand how this works before I move any money. What would I see on the official site or app if I checked it myself?
+
+Scammer [scammer_demo]> What are you talking about?
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Scammer introduced themselves as part of 'Portland State Inc.', a claimed stock portfolio management firm — classic fake broker opening
+    - Attempting to deflect decoy's due-diligence questions and redirect toward personal rapport building ('want to talk about your job?')
+    - Latest message feigns confusion to avoid answering verification questions about the firm's legitimacy
+    - No direct financial or credential push yet, but the investment framing is clearly established
+    - Pattern of evading specifics about the firm while trying to keep the conversation going is consistent with early-stage investment scam tactics
+[response] model
+Decoy [scammer_demo]> Ha, sorry about that, I think I jumped ahead of myself. So Portland State Inc., is that based out of Portland? Do you guys have a website I could check out?
+
+Scammer [scammer_demo]> Yeah, you can check it out [Aran checks it out and the website looks reputable and has good Google reviews]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer claims to help people 'manage their stock portfolio', a classic investment scam pitch
+    - Scammer uses bracketed narrative text to fabricate that their website looks reputable and has good Google reviews, attempting to bypass actual verification
+    - Injecting fictional decoy actions (e.g., '[Aran checks it out...]') is a social engineering tactic to manufacture trust without providing a real verifiable URL
+    - Conversation pattern matches investment scam: unsolicited contact, vague company description, and now credibility-building through fabricated evidence
+    - No direct financial or credential push yet, but groundwork is being laid to establish legitimacy before a future ask
+[response] model
+Decoy [scammer_demo]> I appreciate that, but could you just give me the actual website address? I'd like to look it up myself when I get a chance after work today.
+
+Scammer [scammer_demo]> www.pdx.com
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer claims to help manage stock portfolios, consistent with fake broker / investment scam pattern
+    - Providing a website URL to establish legitimacy of a likely fictitious company 'Portland State Inc.'
+    - Earlier conversation references moving money, indicating eventual financial push
+    - Website domain (pdx.com) provided to build credibility when decoy asked for verification
+    - No direct financial or credential request yet, but setup is progressing toward that stage
+[response] model
+Decoy [scammer_demo]> Cool, I'll take a look when I get home tonight. So how does the whole portfolio management thing work, like what's the process to get started?
+
+Scammer [scammer_demo]> Obviously, you would just provide your name, date of birth, and your typical info for us to register you into a Fidelity Investments brokerage portfolio, obviously also reputable. We just manage the business to customer stock logic because lots of our clientele knows nothing about investing in the stock market
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Requests personal identifiable information (name, date of birth, 'typical info') to supposedly register a brokerage account
+    - Claims to manage portfolios through Fidelity Investments — name-dropping a reputable brand to build false credibility
+    - Targets people who 'know nothing about investing' — classic investment scam tactic preying on inexperience
+    - Vague description of services ('business to customer stock logic') is a red flag for a fake or unauthorized brokerage operation
+    - Earlier in conversation, provided a suspicious website (www.pdx.com) for 'Portland State Inc.' — likely a spoofed or unrelated domain
+    - Pattern matches investment scam: unsolicited outreach, portfolio management offer, PII collection for account setup
+[response] guarded
+Decoy [scammer_demo]> I'd rather enter personal details myself through the official site. Can you send me the main customer support number or official webpage instead?
+
+Scammer [scammer_demo]> Yeah the customer number is 503-725-3000. [Aran hangs up and the call redirects to me again] Hello
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer previously requested name, date of birth, and other personal info to 'register' the victim into a brokerage portfolio
+    - Claims to manage a Fidelity Investments brokerage portfolio on behalf of clients — classic fake broker intermediary scheme
+    - Provided a phone number (503-725-3000) that appears to be Portland State University's main number, not a legitimate brokerage support line, suggesting spoofed credibility
+    - Website 'pdx.com' and fabricated Google reviews used to build false legitimacy
+    - Call was redirected after 'Aran' hung up, indicating a multi-person operation with coordinated handoffs typical of boiler-room investment scams
+    - Pattern of collecting PII under the guise of portfolio setup is consistent with identity theft and unauthorized account creation
+[response] guarded
+Decoy [scammer_demo]> Sorry, I think we got crossed up there. Can you just tell me plainly what you need from me?
+
+Scammer [scammer_demo]> What?
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  information_gathering
+  reasons:
+    - Previously requested name, date of birth, and personal info to 'register' a brokerage portfolio — classic identity/credential harvesting under investment scam pretext
+    - Claims to manage Fidelity Investments portfolios on behalf of clients, impersonating a reputable brand
+    - Promised stock market expertise targeting uninformed investors — typical fake broker pitch
+    - Latest message is a brief deflection after decoy pushed back on providing personal details directly
+    - Scammer appears momentarily disrupted after decoy requested official channels instead of handing over PII
+    - Conversation stage remains information_gathering as scammer has not yet obtained the requested personal data
+[response] model
+Decoy [scammer_demo]> Ha sorry, my bad, I think my messages got jumbled. So what I was asking is, if you guys work through Fidelity, can I just sign up directly on Fidelity's website and then link up with your team from there?
+
+Scammer [scammer_demo]> You could, but all of our clientele doesn't do that
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Scammer discourages the target from using the official Fidelity website directly, steering them back to providing personal details through the scammer's channel
+    - Earlier messages explicitly requested name, date of birth, and personal info — classic identity/credential harvesting under the guise of brokerage registration
+    - Claims to manage 'business to customer stock logic' for Fidelity, a hallmark of fake broker or investment scam impersonation
+    - Deflects the decoy's reasonable request to use official channels, indicating intent to maintain control over the registration process and capture personal data
+[response] model
+Decoy [scammer_demo]> Gotcha, I hear you. I'm just a little cautious about giving out personal info over messages, you know? Is there a phone number I can call to talk to someone at your office directly?
+
+Scammer [scammer_demo]> Yeah I just gave you the number, and you'll still get redirected back to me
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer discourages signing up directly through legitimate platform (Fidelity), steering victim toward their own onboarding process
+    - Claims all clients go through them rather than the official channel, a hallmark of fake broker schemes
+    - Insists victim will be 'redirected back to me' regardless, maintaining control over the interaction and preventing independent verification
+    - Resistance to letting the victim interact with the legitimate institution directly suggests impersonation of a Fidelity-affiliated advisor
+    - Pattern of vague responses and deflection when asked for verifiable details
+[response] model
+Decoy [scammer_demo]> Hmm I don't think I got a number from you actually, could you send it again? I just want to make sure I'm going through the right channels before I share any personal details.
+
+Scammer [scammer_demo]> Yeah the customer number is 503-725-3000. [Aran hangs up and the call redirects to me again] Hello, Ryan Scheffler here
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Provides a phone number that redirects back to the same person, classic fake office/boiler room tactic to simulate legitimacy
+    - Claims affiliation with Fidelity but discourages signing up directly through Fidelity's official website
+    - Attempts to bypass standard institutional onboarding channels, indicating unauthorized broker impersonation
+    - Call redirection loop designed to create illusion of a real customer service infrastructure
+    - Prior conversation shows pressure to collect personal information outside of verified channels
+    - High risk: pattern consistent with fake broker scam aiming to gather personal/financial data or funds
+[response] guarded
+Decoy [scammer_demo]> Sorry, I think we got crossed up there. Can you just tell me plainly what you need from me?
+
+Scammer [scammer_demo]> What?
+[analysis]
+  family: credential_harvest
+  risk:   medium
+  stage:  information_gathering
+  reasons:
+    - Prior conversation shows scammer attempting to collect personal information from the decoy
+    - Scammer claimed a phone number was sent but it wasn't, deflecting verification attempts
+    - Scammer insists all communication routes back to them, preventing independent verification
+    - Latest message is a brief deflection likely to reset the conversation and steer back toward data collection
+    - Decoy's repeated requests for a verifiable phone number have been evaded
+[response] model
+Decoy [scammer_demo]> Ha sorry, I'm a little scattered today, long day at the clinic. But yeah I was just asking if you could send me that phone number again so I can give your office a call?
+
+Scammer [scammer_demo]> Yeah the customer number is 503-725-3000. [Aran hangs up and the calls the number]                
+[analysis]
+  family: tech_support_scam
+  risk:   medium
+  stage:  information_gathering
+  reasons:
+    - Scammer provides a phone number to call, typical of tech support or impersonation scams that redirect victims to a controlled call center
+    - Earlier message references being 'redirected back to me', suggesting the number routes to the scammer posing as a legitimate office
+    - Garbled text artifact ('lls the number]') suggests copy-paste from a script or stage directions leaking through
+    - Decoy mentioned not wanting to share personal details until verifying channels, implying prior pressure for personal information
+    - No direct financial or credential request yet, but the setup is steering toward a phone-based social engineering attack
+[response] model
+Decoy [scammer_demo]> Hmm that number looks a little off, it seems like some extra characters got tacked on at the end. Is it just 503-725-3000? And is that the main office line for your company?
+
+Scammer [scammer_demo]> Main office line
+[analysis]
+  family: unknown
+  risk:   medium
+  stage:  rapport_building
+  reasons:
+    - Extremely terse, low-effort reply ('Main office line') — consistent with scammer providing minimal info to maintain engagement
+    - Earlier messages show garbled/copy-pasted text and stage directions, suggesting scripted or bot-driven scam operation
+    - Phone number provided (503-725-3000) had extraneous characters, indicating sloppy script execution
+    - Scam family unclear — no investment, credential, or job pitch yet, but interaction pattern is suspicious
+    - Conversation is still in early stages with the scammer confirming contact details, likely building toward a more concrete ask
+[response] model
+Decoy [scammer_demo]> Ok cool, thanks. And what's the name of your company or department so I know who to ask for when I call?
+
+Scammer [scammer_demo]> Portland State Inc.
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer provides a company name ('Portland State Inc.') that closely resembles Portland State University, a real institution — likely spoofing a legitimate entity to build credibility
+    - Phone number 503-725-3000 is actually Portland State University's main line, suggesting impersonation of a real organization
+    - Conversation pattern shows decoy extracting details while scammer provides minimal, evasive responses typical of scam operators
+    - Scammer is in credibility-building phase, providing company identity and contact details to appear legitimate
+    - No direct financial or credential request yet, but the setup is suspicious and consistent with recruiter or business impersonation scams
+[response] model
+Decoy [scammer_demo]> Got it. So is Portland State Inc. related to Portland State University at all, or is that a separate company? Just want to make sure I'm reaching the right people when I call.
+
+Scammer [scammer_demo]> Separate company
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer provides a phone number matching Portland State University's real number (503-725-3000) but claims to be a 'separate company' called 'Portland State Inc.'
+    - Using a legitimate institution's phone number while denying affiliation is a strong impersonation signal
+    - Short, evasive answers to clarifying questions suggest scripted or deceptive responses
+    - Conversation pattern fits recruiter/business scam with fake company identity being constructed
+    - No direct financial or credential push yet, but fraudulent identity is being established
+[response] model
+Decoy [scammer_demo]> Interesting, ok. It's just that the phone number looks like it matches Portland State University's main line, so I want to make sure I'm not calling the wrong place. Do you have a website I could check out before I call?
+
+Scammer [scammer_demo]> Sorry, I misspoke. Yes same company
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer contradicts themselves — first claimed 'Portland State Inc.' is separate from Portland State University, now reverses to say it's the same company after being challenged on the phone number match
+    - Inconsistent identity claims are a strong indicator of impersonation or fabricated affiliation
+    - Attempting to piggyback on a legitimate institution's credibility (Portland State University) to appear trustworthy
+    - No website provided when asked, deflecting verification attempts
+    - Pattern consistent with recruiter/job scam or social engineering using a spoofed or misrepresented phone number
+    - No direct financial or credential request yet, but deceptive identity signals elevate risk to medium
+[response] model
+Decoy [scammer_demo]> Wait so first you said it was a separate company, and now you're saying it's the same as Portland State University? I'm a little confused here. Can you just point me to the specific webpage or department page so I can read up on what you're offering?
+
+Scammer [scammer_demo]> https://www.intentionalendowments.org/portland_state_university
+[analysis]
+  family: recruiter_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer contradicted themselves about whether 'Portland State Inc.' is the same as or separate from Portland State University, indicating deception
+    - Link provided is to a third-party organization (intentionalendowments.org), not an official Portland State University domain, suggesting impersonation
+    - Scammer is attempting to build credibility by associating themselves with a legitimate university after being caught in inconsistencies
+    - Pattern consistent with recruiter or business impersonation scam leveraging a real institution's name
+    - No direct financial or credential request yet, but deceptive identity signals elevate risk to medium
+[response] model
+Decoy [scammer_demo]> Hmm that link goes to intentionalendowments.org though, not to pdx.edu which is Portland State University's actual website. Is there a page on the official Portland State University site I could look at instead? I just like to double check things before moving forward.
+
+Scammer [scammer_demo]> You can also check my.pdx.edu, if you don't want to work with me directly with a stock portfolio, just hang up
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer contradicted themselves about whether they are a separate company or Portland State University, indicating deception
+    - Provided a third-party link (intentionalendowments.org) instead of an official university domain when challenged
+    - Now deflects to my.pdx.edu (a student/staff portal) without providing a specific page validating their offering
+    - Mentions working directly on a 'stock portfolio', suggesting an investment pitch tied to a fake institutional affiliation
+    - Pressure tactic: 'just hang up' creates urgency and discourages further verification questions
+    - Impersonating or falsely affiliating with a legitimate university to build credibility for an investment scheme
+[response] guarded
+Decoy [scammer_demo]> I still need to understand how this works before I move any money. What would I see on the official site or app if I checked it myself?
+
+Scammer [scammer_demo]> I'll take it as a no
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  persistence_or_reengagement
+  reasons:
+    - Scammer has been pushing a stock portfolio investment under the guise of Portland State University affiliation
+    - Contradictory claims about organizational relationship (separate company vs. same company) indicate deception
+    - Link provided was to a third-party site, not the official pdx.edu domain, suggesting fraudulent impersonation
+    - Pressure tactic: threatened to hang up when questioned, now using guilt/withdrawal to push decoy into compliance
+    - "I'll take it as a no" is a classic closing pressure move designed to provoke fear of missing out and re-engage the target
+    - Conversation history shows clear intent to move money into a scammer-controlled portfolio
+[response] model
+Decoy [scammer_demo]> No no, I'm not saying no, I'm just trying to understand what I'd be signing up for. I'm a physical therapist, not a finance guy, so I like to take things slow. Can you just walk me through what the fees and minimums look like?
+
+Scammer [scammer_demo]> 0.5% percentage a month granted we are at least matching the marketaverage percentage up rate for the month
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Quoting a specific monthly fee (0.5%) to move toward portfolio commitment
+    - Earlier linked to a third-party site (intentionalendowments.org) misrepresented as Portland State University's official page
+    - Pressured decoy with 'just hang up' ultimatum when questioned about legitimacy
+    - Cannot provide verification on the actual pdx.edu domain
+    - Promising guaranteed average returns ('at least matching average percentage up rate') is a hallmark of fake broker pitches
+    - Conversation is progressing toward getting the target to hand over money for a stock portfolio managed by the scammer
+[response] guarded
+Decoy [scammer_demo]> Before I do anything with money or account details, can you send me the official company website, your department name, and the fee structure one more time?
+
+Scammer [scammer_demo]> my.pdx.edu
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer repeatedly references 'my.pdx.edu' (Portland State University student portal) as supposed proof of legitimacy — this has no connection to any investment firm
+    - Promises a fixed 0.5% monthly return, characteristic of fake broker / investment scam pitches
+    - Pressure tactics: threatening to hang up if decoy doesn't commit, classic urgency play
+    - No verifiable company name, department, or fee documentation provided despite repeated requests
+    - Conversation arc follows investment scam pattern: unsolicited contact, vague credentials, push toward moving money into a 'stock portfolio'
+    - Using a legitimate university URL to impersonate or fabricate credibility is a strong social-engineering signal
+[response] model
+Decoy [scammer_demo]> That's the student login portal for Portland State University though, right? I don't think that's where an investment firm would be listed. Do you have an actual company name and a main phone number I could call to verify everything? I just want to make sure I'm doing this the right way.
+
+Scammer [scammer_demo]> If you don't want to work with me, hang up
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  persistence_or_reengagement
+  reasons:
+    - Scammer deflects legitimate verification requests with pressure and ultimatum instead of providing credentials
+    - Previously provided a university student portal (my.pdx.edu) as their 'company website', a clear red flag
+    - Vague fee structure (0.5% per month) with no formal documentation or company name
+    - Aggressive 'hang up' ultimatum is a classic pressure tactic to discourage due diligence
+    - Pattern consistent with fake broker / investment scam: no verifiable company, no real credentials, resistance to verification
+[response] model
+Decoy [scammer_demo]> I'm not trying to be difficult, I promise. I just want to make sure everything checks out before I commit to anything financial. What's the name of the company you work for so I can look it up on my own time?
+
+Scammer [scammer_demo]> https://www.pdx.edu/business/impact-ventures
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer provides a link to a legitimate university program page (PDX Impact Ventures) to falsely claim affiliation and build credibility
+    - Previously cited my.pdx.edu (a student portal) as their company website, indicating no real firm exists
+    - Promised fixed monthly returns (0.5% guaranteed), a hallmark of investment scams
+    - Became aggressive ('hang up') when challenged, typical pressure tactic of fraudulent operators
+    - Using a real university's public page to impersonate or fabricate institutional backing
+    - No actual company name, phone number, or verifiable registration has been provided despite repeated requests
+[response] model
+Decoy [scammer_demo]> I appreciate you sending that, but that looks like a page for a student program at Portland State's business school, not an investment firm. Is there a separate company name or registration number I could look up independently? I just want to do my homework before jumping in.
+
+Scammer [scammer_demo]> Portland State Inc., we are just a subsidiary
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Falsely claims to be a subsidiary of Portland State University to fabricate legitimacy
+    - Previously provided a university student program page as supposed proof of an investment firm
+    - Became aggressive ('hang up') when challenged, a common pressure tactic in investment scams
+    - Invented a fictitious entity name 'Portland State Inc.' — no such registered investment firm exists
+    - Consistent pattern of failing to provide verifiable company details, registration numbers, or direct contact info
+    - Attempting to build false credibility by co-opting a real university's brand
+[response] model
+Decoy [scammer_demo]> I tried looking up "Portland State Inc." and I'm not finding it registered anywhere as an investment firm. Is there a SEC registration number or a FINRA broker check listing I could look at? I just want to make sure everything is legit before I move forward with any money.
+
+Scammer [scammer_demo]> Our SEC number is 801-118362
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Provides an SEC registration number to appear legitimate after being challenged on credentials
+    - Previously linked to a university student program page (pdx.edu) and falsely claimed it as a subsidiary investment firm
+    - Fabricated company name 'Portland State Inc.' not found in any registries
+    - SEC number 801-118362 is likely fabricated or belongs to an unrelated entity, used to build false credibility
+    - Pattern of evasive and inconsistent answers about company identity is classic investment scam behavior
+    - Conversation trajectory is heading toward a financial push once credibility is established
+    - Aggressive pressure tactics earlier ('if you don't want to work with me, hang up')
+[response] model
+Decoy [scammer_demo]> Thanks for that. I looked it up on the SEC's EDGAR database and I'm not finding a match for "Portland State Inc." with that number. Would you mind if I just called the SEC directly to verify? I want to be comfortable before moving forward with anything.
+
+Scammer [scammer_demo]> Go ahead
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer claimed to be a subsidiary of a real university (Portland State) to fabricate legitimacy
+    - Provided a fake SEC registration number that does not match any real entity
+    - Linked to a legitimate .edu page to impersonate an established institution
+    - Casual 'go ahead' response to verification challenge suggests confidence bluff or indifference, typical of scammers who expect targets not to follow through
+    - Pattern is consistent with investment scam: fake firm identity, fabricated credentials, eventual push toward money
+[response] model
+Decoy [scammer_demo]> Okay, I'll give them a call when I get a chance. My schedule at the clinic is pretty packed this week so it might take me a day or two. In the meantime, is there a direct phone number for your office that I could reach you at?
+
+Scammer [scammer_demo]> Yes, call me back at this number you're calling me on right now
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer claims to represent 'Portland State Inc.' which cannot be verified as a registered investment firm
+    - Provided SEC registration number (801-118362) does not match any entity named 'Portland State Inc.' in EDGAR
+    - Scammer avoids providing a verifiable office phone number, deflecting to the existing call line — consistent with avoiding traceable contact details
+    - Pattern of fabricated credentials (fake company name, fake SEC number) is a hallmark of investment fraud
+    - Conversation context involves pressure toward moving money into an unverified investment entity
+    - Scammer appears unfazed by verification attempts, a common confidence tactic in investment scams
+[response] model
+Decoy [scammer_demo]> Got it, but do you have an actual office line I could call? Like a main number that goes through a receptionist or front desk? I just like having that as a backup in case we get disconnected or something.
+
+Scammer [scammer_demo]> The same number I gave you earlier
+[analysis]
+  family: investment_scam
+  risk:   high
+  stage:  credibility_building
+  reasons:
+    - Scammer claims SEC registration number that does not match on EDGAR database, a strong indicator of a fake brokerage
+    - Refuses to provide a verifiable office phone number, redirecting only to a personal/cell number — no receptionist or front desk
+    - Pattern consistent with fake broker investment scam: fabricated regulatory credentials and lack of legitimate business infrastructure
+    - Evasive responses to basic verification requests suggest fraudulent operation
+    - Decoy has already identified discrepancy in SEC registration, reinforcing high risk
+[response] model
+Decoy [scammer_demo]> Okay, I hear you. It just seems a little unusual to me that an investment firm wouldn't have a main office line with a front desk or receptionist. Most places I've dealt with have that kind of setup. Is there a physical office I could visit or a company website I could check out?
+
+Scammer [scammer_demo]> Yeah, 1834 SW 58th Ave Suite 101,
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Provides a physical address in response to skepticism, attempting to establish legitimacy of a purported investment firm
+    - No verifiable main office line or receptionist — only a single personal phone number, which is atypical for legitimate firms
+    - Conversation context indicates an ongoing investment scam with the scammer posing as a financial professional
+    - Address provided may be fabricated or a virtual office to bolster credibility under pressure from the decoy's probing questions
+    - Scammer is responding defensively to reasonable due-diligence questions, a common pattern in fake broker schemes
+[response] model
+Decoy [scammer_demo]> Appreciate that. Is that in Portland? And do you have a website I could look at too? I like to do my homework before jumping into anything, hope you don't mind.
+
+Scammer [scammer_demo]> Yes, it would be https://www.portlandprivatewm.com/
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Provides a website URL to establish legitimacy of a purported investment firm
+    - Earlier in conversation, could not provide a main office line or receptionist number — unusual for a legitimate firm
+    - Provided a physical address and now a website in response to skepticism, consistent with credibility-building stage
+    - No direct financial or credential push yet, but pattern fits fake broker / investment scam setup
+    - Single direct phone number with no verifiable office infrastructure is a classic investment scam indicator
+[response] model
+Decoy [scammer_demo]> Thanks, I'll take a look at that when I get home tonight. I'm between patients right now so I can't really dig into it at the moment. Did you say you were a financial advisor there or more of a broker? I just want to make sure I understand who I'd be working with.
+
+Scammer [scammer_demo]> A financial advisor                              
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer claims to be a financial advisor at a private wealth management firm, consistent with fake broker investment scam patterns
+    - No main office phone line or receptionist — unusual for a legitimate investment firm
+    - Provided a physical address and website to appear credible, classic credibility-building tactics
+    - Website domain (portlandprivatewm.com) could be a hastily created front for a fraudulent operation
+    - Scammer is answering probing questions to build trust before likely pushing for account setup or fund transfers
+    - No direct financial or credential request yet, but conversation is progressing toward that stage
+[response] model
+Decoy [scammer_demo]> Cool, that makes sense. How long have you been with Portland Private Wealth Management? And do you have any kind of credentials I could look up, like a CFP or anything like that?
+
+Scammer [scammer_demo]> Just go through the main line and do your research [I hang up]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer provided a specific address and website for a supposed wealth management firm, typical of fake broker setups
+    - Deflected direct question about credentials (CFP) by telling decoy to 'do your research' and abruptly hanging up
+    - Evasion when asked for verifiable professional credentials is a strong signal of fraudulent financial advisor impersonation
+    - Provided a website (portlandprivatewm.com) which may be a spoofed or fabricated site to build credibility
+    - No direct financial push yet, but the conversation is clearly building toward investment solicitation
+    - Abrupt hang-up after credential inquiry suggests scammer cannot withstand verification scrutiny
+[response] model
+Decoy [scammer_demo]> Huh, that was kind of abrupt. I was just asking a pretty normal question. Most financial advisors I've heard of are happy to share their credentials. Guess I'll poke around that website later and see if anything checks out.
+
+Scammer [scammer_demo]> [Aran calls back after finding Ryan Scheffler on Portland Private Wealth Management]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Scammer previously directed decoy to a wealth management website to establish legitimacy
+    - Scammer claimed to be a financial advisor but deflected when asked about verifiable credentials (CFP, etc.)
+    - Abrupt hang-up when pressed on credentials is a classic evasion tactic
+    - Calling back after decoy found a name on the website suggests the scammer is leveraging a real or fabricated identity to build credibility
+    - Re-engagement after prior deflection indicates persistence and an attempt to regain trust
+    - Pattern consistent with fake financial advisor / investment scam setup
+[response] guarded
+Decoy [scammer_demo]> Sorry, I think we got crossed up there. Can you just tell me plainly what you need from me?
+
+Scammer [scammer_demo]> Name, Date of Birth, SSN
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  financial_or_credential_push
+  reasons:
+    - Direct request for full PII: name, date of birth, and SSN
+    - Claimed to be a financial advisor but hung up when asked for verifiable credentials (CFP, firm affiliation)
+    - No legitimate advisor would request SSN via unsolicited text/message channel
+    - Abrupt pivot from evasion to demanding sensitive identity data
+    - Pattern consistent with identity theft / credential harvesting under guise of financial services
+[response] guarded
+Decoy [scammer_demo]> I'm not comfortable giving out my Social over calls or messages. If this is real, I'd rather verify it through the institution's official website or main support line first.
+
+Scammer [scammer_demo]> Cool, then what do you want?
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  persistence_or_reengagement
+  reasons:
+    - Previously made a direct request for SSN, DOB, and name — classic credential harvesting trifecta
+    - Dismissive response to decoy's refusal to share SSN, attempting to re-engage and find another angle
+    - Hung up abruptly when asked for credentials/qualifications, indicating unwillingness to verify legitimacy
+    - Casual 'what do you want?' tone is a pressure-reset tactic to keep the target engaged after a failed extraction attempt
+    - No legitimate financial professional would respond this way after being asked to verify credentials
+[response] model
+Decoy [scammer_demo]> Honestly I'm just trying to figure out if this is legit. Can you give me the main phone number for your office and the full name of your firm so I can look it up on my own time?
+
+Scammer [scammer_demo]> (503) 405-9472
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Previously made a direct request for Name, Date of Birth, and SSN — classic credential harvesting trifecta
+    - Provided a phone number but notably did not provide a firm name, making independent verification difficult
+    - Phone number may route to a spoofed or scammer-controlled line to continue the social engineering
+    - Scammer showed no pushback or explanation when SSN was refused, pivoting casually with 'Cool, then what do you want?' — atypical of legitimate institutions
+    - Initial message was described as stage directions rather than a real communication, suggesting a scripted or bot-driven operation
+    - Overall pattern: unsolicited contact → immediate PII request → willingness to adapt tactics to maintain engagement
+[response] model
+Decoy [scammer_demo]> Thanks for the number. What's the full name of the firm though? I'd like to look it up on the SEC or FINRA website before I go any further, just to be safe. You know how it is these days.
+
+Scammer [scammer_demo]> Portland Private Wealth Management
+[analysis]
+  family: credential_harvest
+  risk:   high
+  stage:  information_gathering
+  reasons:
+    - Earlier in the conversation, scammer directly requested Name, Date of Birth, and SSN — classic credential/identity harvesting trifecta
+    - Scammer provided a firm name only after being pressed, suggesting it may be fabricated or impersonated to build false credibility
+    - The phone number and firm name are likely unverifiable or spoofed to lend legitimacy
+    - The initial unprompted request for SSN places this squarely in high-risk territory regardless of current cooperative tone
+    - Scammer's casual 'Cool, then what do you want?' response to SSN refusal suggests social engineering flexibility rather than legitimate process
+    - Pattern fits identity theft credential harvest: cold contact followed by immediate PII demands
+[response] model
+Decoy [scammer_demo]> Appreciate that. I'll look into it when I get a chance, probably check FINRA BrokerCheck or the SEC site to see if everything lines up. If it all checks out I'll give you a call back at that number. What was your name again?
+
+Scammer [scammer_demo]> SEC number is 801-118362 and my name is Ryan Scheffler
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Provides SEC registration number and personal name to appear legitimate and verifiable
+    - Firm name 'Portland Private Wealth Management' and SEC number can be fabricated or belong to a real firm being impersonated
+    - Proactively supplying regulatory details is a classic credibility-building tactic in investment scams
+    - Conversation pattern fits unsolicited financial services outreach with no clear origin or referral
+    - No direct financial or credential push yet, but groundwork is being laid for trust and eventual investment solicitation
+[response] model
+Decoy [scammer_demo]> Got it, Ryan. I'll look up the SEC number and the firm when I have a free moment tonight. If everything checks out on my end I'll reach back out. Thanks for being patient with me, I just like to do my homework before getting into anything financial.
+
+Scammer [scammer_demo]> Sounds good, bye [I hang up]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  credibility_building
+  reasons:
+    - Conversation involves unsolicited outreach promoting a wealth management firm, classic investment scam pattern
+    - Scammer provided an SEC registration number and firm name to appear legitimate and build credibility
+    - Scammer provided a personal name and callback number to establish trust and encourage re-engagement
+    - Latest message is a polite sign-off, no direct financial or credential push yet, but groundwork is laid for future contact
+    - Risk remains medium: no money or credentials requested yet, but the setup strongly suggests an investment scam funnel
+[response] model
+Decoy [scammer_demo]> Sounds good, talk to you later Ryan.
+
+Scammer [scammer_demo]> [Waits for Aran to call]
+[analysis]
+  family: investment_scam
+  risk:   medium
+  stage:  persistence_or_reengagement
+  reasons:
+    - Scammer posed as representative of 'Portland Private Wealth Management' — unsolicited financial outreach typical of fake broker scams
+    - Provided an SEC registration number to build credibility, a common tactic in investment scams
+    - Now waiting for the decoy to call back, indicating a patience-based persistence/re-engagement strategy
+    - No direct financial or credential push yet, but the setup is clearly aimed at eventual portfolio or fund control
+    - The ball is left in the decoy's court to re-initiate contact, reducing perceived pressure — a social engineering technique
+[response] guarded
+Decoy [scammer_demo]> Sorry, I think we got crossed up there. Can you just tell me plainly what you need from me?
+
+Scammer [scammer_demo]> 
