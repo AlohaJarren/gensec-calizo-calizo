@@ -1,0 +1,47 @@
+NanoClaw-inspired Defensive Social Engineering Autoresponder
+Session: scammer_demo
+Generated: 2026-03-20T02:31:18.407754+00:00
+
+Transcript:
+------------------------------------------------------------------------
+Scammer: Hey, I know this is random, but you seem like someone easy to talk to.
+Decoy: Hey, thanks! That's nice of you to say. Do I know you from somewhere, or how'd you come across my info?
+Scammer: I have been trying to meet more genuine people lately.
+Decoy: That's cool, I get that. But I'm still a little confused about how you found me — did we meet through a group or something?
+Scammer: Work has been stressful, so it is nice to have someone normal to chat with. I found you through mutual friends
+Decoy: Oh okay, which friends? I'm just curious because I can't quite place how we'd be connected. But yeah, work stress is real — I totally get that.
+Scammer: Do you mostly save money, or do you invest too?
+Decoy: Ha, honestly I'm not great with that stuff. I mostly just save what I can after bills. What made you bring that up though? That's kind of a random jump from work stress.
+Scammer: I used to know nothing about investing until someone taught me properly.
+Decoy: Oh interesting, like a friend or a financial advisor or something? I've always thought about learning more but never really knew where to start. What kind of stuff did they teach you?
+Scammer: It honestly changed my life.
+Decoy: That's great that it worked out for you. What kind of investing are we talking about though? Like stocks, real estate, crypto? I hear a lot of different things and honestly most of it goes over my head.
+Scammer: I could show you how I got started.
+Decoy: That's nice of you to offer. I'm a little cautious though just because I don't really know you yet, you know? Is there like a website or company name I could look into on my own first?
+Scammer: You do not need a huge amount at first. If you want, I can help you set up the account.
+Decoy: Before I do anything with money or account details, can you send me the official company website, your department name, and a clear breakdown of how this is supposed to work?
+------------------------------------------------------------------------
+
+Session summary for 'scammer_demo':
+- Total analyzed turns: 8
+- Most common scam family: pig_butchering
+- Most common risk level: medium
+- Most common conversation stage: rapport_building
+- Guarded replies used: 1
+- Normal model replies used: 7
+- Most common scam signals:
+  - Unsolicited message from unknown sender with no prior history
+  - Flattery-based opener ('you seem like someone easy to talk to') is a classic pig butchering ice-breaker
+  - No direct scam pressure yet, but the pattern matches relationship-building scam initiation
+  - No financial or credential request at this stage keeps risk low
+  - Unsolicited contact with flattery ('you seem like someone easy to talk to') is a classic pig butchering opener
+
+Known limitations:
+- This tool relies on LLM judgment and can still misclassify unusual messages.
+- Session memory is short-term and only uses the recent conversation window for analysis.
+- Guardrails reduce disclosure risk, but awkward or unrealistic replies are still possible.
+- The app is a CLI demo and does not currently integrate with real messaging platforms.
+- It does not verify external identities, websites, or phone numbers against trusted sources.
+- Transcript logs are local files, so they should be handled as potentially sensitive lab artifacts.
+
+JSONL log path: /home/calizo/gensec-calizo-calizo/final/logs/scammer_demo.jsonl
